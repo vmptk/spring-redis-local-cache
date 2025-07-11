@@ -10,11 +10,20 @@ spring:
         max-idle: 8
         min-idle: 0
         max-wait: -1ms
-  
-  cache:
-    type: caffeine
-    caffeine:
-      spec: maximumSize=1000,expireAfterWrite=5m,recordStats
+
+redisson:
+  config: |
+    singleServerConfig:
+      address: "redis://localhost:6379"
+      timeout: 2000
+      retryAttempts: 3
+      retryInterval: 1500
+    localCacheConfig:
+      cacheSize: 1000
+      timeToLiveInMillis: 300000
+      maxIdleInMillis: 300000
+      evictionPolicy: LRU
+      syncStrategy: INVALIDATE
 
 logging:
   level:

@@ -1,6 +1,6 @@
-# Spring Redis Near Cache (Local Cache) Sample
+# Spring Redis Near Cache with Redisson Sample
 
-A comprehensive implementation of Redis near cache pattern using Spring Boot, Domain Driven Design (DDD), and a Product Catalog domain model. This sample demonstrates L1 (Caffeine local cache) + L2 (Redis distributed cache) architecture for optimal performance.
+A comprehensive implementation of Redis near cache pattern using Spring Boot, Redisson with local caching, Domain Driven Design (DDD), and a Product Catalog domain model. This sample demonstrates local + remote cache synchronization using Redisson's RLocalCachedMap for optimal performance.
 
 ## Table of Contents
 
@@ -20,16 +20,17 @@ A comprehensive implementation of Redis near cache pattern using Spring Boot, Do
 
 This project implements a **Near Cache Pattern** using:
 
-- **L1 Cache (Caffeine)**: Fast in-memory cache for frequently accessed data
-- **L2 Cache (Redis)**: Distributed cache for shared data across instances
+- **Redisson Local Cache**: Fast in-memory cache with automatic synchronization
+- **Redis Remote Cache**: Distributed cache for shared data across instances  
+- **RLocalCachedMap**: Collection-like synchronization between local and remote cache
 - **Domain Driven Design**: Clean architecture with separated concerns
 - **Spring Cache Abstraction**: Declarative caching with annotations
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Application   │    │   L1 (Caffeine) │    │   L2 (Redis)    │
-│     Layer       │───▶│   Local Cache   │───▶│ Distributed     │
-│                 │    │                 │    │    Cache        │
+│   Application   │    │ Redisson Local  │    │   Redis Remote  │
+│     Layer       │───▶│     Cache       │───▶│     Cache       │
+│                 │    │(RLocalCachedMap)│    │ (Synchronized)  │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
@@ -37,16 +38,17 @@ This project implements a **Near Cache Pattern** using:
 
 The near cache pattern provides:
 
-1. **Ultra-fast local access** (L1 - Caffeine)
-2. **Distributed consistency** (L2 - Redis)
-3. **Automatic fallback** to persistent storage
-4. **Cache invalidation** across all layers
+1. **Ultra-fast local access** (Redisson local cache)
+2. **Automatic synchronization** with Redis remote cache
+3. **Invalidation strategy** to maintain consistency
+4. **Automatic fallback** to persistent storage
 
 ### Cache Flow
 
-1. **Cache Hit (L1)**: Data served from local Caffeine cache (~1ms)
-2. **Cache Miss (L1), Hit (L2)**: Data loaded from Redis and cached locally (~10ms)
-3. **Cache Miss (L1 & L2)**: Data loaded from database, cached in both layers (~100ms)
+1. **Local Cache Hit**: Data served from Redisson local cache (~1ms)
+2. **Local Miss, Remote Hit**: Data loaded from Redis and cached locally (~10ms)  
+3. **Cache Miss**: Data loaded from database, cached in both local and remote (~100ms)
+4. **Invalidation**: Local cache automatically syncs when remote data changes
 
 ## Domain Model (DDD)
 
@@ -163,31 +165,41 @@ open build/reports/tests/test/index.html
 
 ```java
 @Bean
-public CacheManager cacheManager(RedisTemplate<String, Object> redisTemplate) {
-    // L1 Cache - Caffeine
-    CaffeineCacheManager caffeineCacheManager = new CaffeineCacheManager();
-    caffeineCacheManager.setCaffeine(
-        Caffeine.newBuilder()
-            .maximumSize(1000)
-            .expireAfterWrite(Duration.ofMinutes(30))
-            .recordStats()
-    );
-
-    // L2 Cache - Redis
-    RedisCacheManager redisCacheManager = RedisCacheManager.builder(redisTemplate)
-        .cacheDefaults(
-            RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofHours(2))
-                .serializeKeysWith(RedisSerializationContext.SerializationPair
-                    .fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair
-                    .fromSerializer(new GenericJackson2JsonRedisSerializer(objectMapper())))
-        )
-        .build();
-
-    // Composite Cache Manager (L1 + L2)
-    return new CompositeCacheManager(caffeineCacheManager, redisCacheManager);
+@Primary
+public CacheManager cacheManager(RedissonClient redissonClient) {
+    Map<String, org.redisson.spring.cache.CacheConfig> configs = new HashMap<>();
+    
+    // Configure local cache with 5-minute TTL
+    configs.put("products", new org.redisson.spring.cache.CacheConfig(
+            300_000,  // TTL in milliseconds
+            300_000   // Max idle time in milliseconds
+    ));
+    
+    configs.put("catalogs", new org.redisson.spring.cache.CacheConfig(
+            300_000,
+            300_000
+    ));
+    
+    return new RedissonSpringCacheManager(redissonClient, configs);
 }
+```
+
+### Redisson Configuration (`application.yaml`)
+
+```yaml
+redisson:
+  config: |
+    singleServerConfig:
+      address: "redis://localhost:6379"
+      timeout: 2000
+      retryAttempts: 3
+      retryInterval: 1500
+    localCacheConfig:
+      cacheSize: 1000
+      timeToLiveInMillis: 300000
+      maxIdleInMillis: 300000
+      evictionPolicy: LRU
+      syncStrategy: INVALIDATE
 ```
 
 ### Redis Configuration (`RedisConfig.java`)
@@ -320,8 +332,8 @@ The project includes comprehensive tests:
 
 Based on test results:
 
-- **L1 Hit (Caffeine)**: ~0.1ms response time
-- **L2 Hit (Redis)**: ~5-10ms response time  
+- **Local Cache Hit (Redisson)**: ~0.1ms response time
+- **Remote Cache Hit (Redis)**: ~5-10ms response time  
 - **Database Miss**: ~50-100ms response time
 - **Performance Improvement**: 50-90% faster with cache
 
@@ -331,16 +343,15 @@ The application provides real-time cache metrics:
 
 ```json
 {
-  "caffeine": {
-    "hitCount": 150,
-    "missCount": 25,
-    "hitRate": 0.857,
-    "estimatedSize": 45
+  "products": {
+    "size": 45,
+    "isEmpty": false,
+    "isExists": true
   },
-  "redis": {
-    "hitCount": 20,
-    "missCount": 5,
-    "operations": 25
+  "catalogs": {
+    "size": 12,
+    "isEmpty": false,
+    "isExists": true
   }
 }
 ```
@@ -419,10 +430,10 @@ public void evictAllProductsCache() {
 
 ### 4. Monitoring and Metrics
 
-- Enable Caffeine cache statistics
-- Monitor cache hit rates
+- Monitor Redisson local cache size and statistics
+- Track cache synchronization effectiveness  
 - Set up alerts for cache performance degradation
-- Track cache size and eviction rates
+- Monitor Redis memory usage and eviction rates
 
 ### 5. Testing Strategies
 
@@ -445,7 +456,7 @@ public void evictAllProductsCache() {
 ```bash
 # Enable debug logging
 logging.level.org.springframework.cache=DEBUG
-logging.level.com.github.benmanes.caffeine=DEBUG
+logging.level.org.redisson=DEBUG
 ```
 
 ## Modern Java Features
@@ -465,17 +476,20 @@ var duration = Duration.between(start, Instant.now());
 ### Pattern Matching for instanceof
 ```java
 // Modern pattern matching (Java 14+)
-if (springCache instanceof CaffeineCache caffeineCache) {
-    var nativeCache = caffeineCache.getNativeCache();
-    var stats = nativeCache.stats();
-    // Use caffeineCache directly without explicit cast
+if (cacheManager instanceof RedissonSpringCacheManager redissonManager) {
+    var redissonClient = redissonManager.getRedissonClient();
+    var map = redissonClient.getMap("products");
+    // Use redissonManager directly without explicit cast
 }
 ```
 
 ### Collection Factory Methods
 ```java
 // Modern collection initialization (Java 9+)
-cacheManager.setCacheManagers(List.of(caffeineCacheManager, redisCacheManager));
+Map<String, org.redisson.spring.cache.CacheConfig> configs = Map.of(
+    "products", new org.redisson.spring.cache.CacheConfig(300_000, 300_000),
+    "catalogs", new org.redisson.spring.cache.CacheConfig(300_000, 300_000)
+);
 ```
 
 ### Stream API Enhancements
@@ -491,7 +505,7 @@ return products.values().stream()
 - **Spring Boot 3.5.3**
 - **Java 24** with modern language features
 - **Redis** (via Testcontainers)
-- **Caffeine Cache**
+- **Redisson 3.36.0** with Spring Boot starter
 - **Jackson** (JSON serialization)
 - **Gradle** (Kotlin DSL)
 - **JUnit 5** (Testing)
