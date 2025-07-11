@@ -28,7 +28,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-cache")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
     implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("com.github.ben-manes.caffeine:caffeine")
+    implementation("redis.clients:jedis:5.2.0")
 
     compileOnly("org.projectlombok:lombok")
 

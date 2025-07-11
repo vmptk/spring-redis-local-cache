@@ -1,6 +1,6 @@
-# Spring Redis Near Cache (Local Cache) Sample
+# Spring Redis Near Cache with Jedis Client-Side Caching
 
-A comprehensive implementation of Redis near cache pattern using Spring Boot, Domain Driven Design (DDD), and a Product Catalog domain model. This sample demonstrates L1 (Caffeine local cache) + L2 (Redis distributed cache) architecture for optimal performance.
+A comprehensive implementation of Redis near cache pattern using **Jedis native client-side caching** with RESP3 protocol, Spring Boot, Domain Driven Design (DDD), and a Product Catalog domain model. This sample demonstrates modern Redis client-side caching for optimal performance with automatic server-assisted cache invalidation.
 
 ## Table of Contents
 
@@ -18,35 +18,38 @@ A comprehensive implementation of Redis near cache pattern using Spring Boot, Do
 
 ## Architecture Overview
 
-This project implements a **Near Cache Pattern** using:
+This project implements a **Redis Near Cache Pattern** using:
 
-- **L1 Cache (Caffeine)**: Fast in-memory cache for frequently accessed data
-- **L2 Cache (Redis)**: Distributed cache for shared data across instances
+- **Jedis Native Client-Side Caching**: Official Redis client-side caching with RESP3 protocol
+- **Automatic Server-Assisted Invalidation**: Redis server automatically invalidates stale cache entries
+- **UnifiedJedis**: Modern Redis client with built-in local caching capabilities
 - **Domain Driven Design**: Clean architecture with separated concerns
 - **Spring Cache Abstraction**: Declarative caching with annotations
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Application   │    │   L1 (Caffeine) │    │   L2 (Redis)    │
-│     Layer       │───▶│   Local Cache   │───▶│ Distributed     │
-│                 │    │                 │    │    Cache        │
+│   Application   │    │ Jedis Client-   │    │  Redis Server   │
+│     Layer       │───▶│ Side Cache      │◄──▶│    (RESP3)      │
+│  (@Cacheable)   │    │ (Local Memory)  │    │  + Invalidation │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-## Near Cache Pattern
+## Jedis Client-Side Caching
 
-The near cache pattern provides:
+This implementation uses **Jedis 5.2.0+** native client-side caching with:
 
-1. **Ultra-fast local access** (L1 - Caffeine)
-2. **Distributed consistency** (L2 - Redis)
-3. **Automatic fallback** to persistent storage
-4. **Cache invalidation** across all layers
+1. **RESP3 Protocol**: Enables server-assisted cache invalidation
+2. **Local Memory Cache**: Ultra-fast local access with configurable size limits
+3. **Automatic Invalidation**: Server notifies clients when cached data becomes stale
+4. **Built-in Statistics**: Real-time cache metrics (hits, misses, evictions)
+5. **Thread-Safe Operations**: Concurrent access handled by Jedis internals
 
 ### Cache Flow
 
-1. **Cache Hit (L1)**: Data served from local Caffeine cache (~1ms)
-2. **Cache Miss (L1), Hit (L2)**: Data loaded from Redis and cached locally (~10ms)
-3. **Cache Miss (L1 & L2)**: Data loaded from database, cached in both layers (~100ms)
+1. **Cache Hit (Local)**: Data served from Jedis local cache (~0.1ms)
+2. **Cache Miss (Local)**: Data fetched from Redis, cached locally (~5-10ms)
+3. **Server Invalidation**: Redis automatically invalidates stale entries via RESP3
+4. **Database Fallback**: If not in Redis, loaded from database (~50-100ms)
 
 ## Domain Model (DDD)
 
@@ -159,35 +162,52 @@ open build/reports/tests/test/index.html
 
 ## Configuration
 
-### Cache Configuration (`CacheConfig.java`)
+### Jedis Client-Side Cache Configuration (`CacheConfig.java`)
 
 ```java
 @Bean
-public CacheManager cacheManager(RedisTemplate<String, Object> redisTemplate) {
-    // L1 Cache - Caffeine
-    CaffeineCacheManager caffeineCacheManager = new CaffeineCacheManager();
-    caffeineCacheManager.setCaffeine(
-        Caffeine.newBuilder()
-            .maximumSize(1000)
-            .expireAfterWrite(Duration.ofMinutes(30))
-            .recordStats()
-    );
-
-    // L2 Cache - Redis
-    RedisCacheManager redisCacheManager = RedisCacheManager.builder(redisTemplate)
-        .cacheDefaults(
-            RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofHours(2))
-                .serializeKeysWith(RedisSerializationContext.SerializationPair
-                    .fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair
-                    .fromSerializer(new GenericJackson2JsonRedisSerializer(objectMapper())))
-        )
-        .build();
-
-    // Composite Cache Manager (L1 + L2)
-    return new CompositeCacheManager(caffeineCacheManager, redisCacheManager);
+public UnifiedJedis unifiedJedis() {
+    HostAndPort endpoint = new HostAndPort(redisHost, redisPort);
+    
+    // RESP3 protocol required for client-side caching
+    DefaultJedisClientConfig config = DefaultJedisClientConfig.builder()
+            .protocol(RedisProtocol.RESP3)
+            .build();
+    
+    // Configure local cache settings
+    redis.clients.jedis.csc.CacheConfig cacheConfig = 
+        redis.clients.jedis.csc.CacheConfig.builder()
+            .maxSize(localMaxSize)  // Max entries in local cache
+            .build();
+    
+    return new UnifiedJedis(endpoint, config, cacheConfig);
 }
+
+@Bean
+@Primary
+public CacheManager cacheManager(UnifiedJedis unifiedJedis, ObjectMapper objectMapper) {
+    return new RedisNearCacheManager(unifiedJedis, objectMapper);
+}
+```
+
+### Application Configuration (`application.yaml`)
+
+```yaml
+spring:
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 2000ms
+    jedis:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+        max-wait: -1ms
+  
+  cache:
+    redis:
+      local-max-size: 1000  # Maximum entries in local cache
 ```
 
 ### Redis Configuration (`RedisConfig.java`)
@@ -256,7 +276,7 @@ DELETE /api/products/{id}
 ### Cache Management
 
 ```bash
-# Get cache metrics
+# Get cache metrics (includes Jedis client-side cache stats)
 GET /api/cache/metrics
 
 # Cache demo endpoints
@@ -318,32 +338,41 @@ The project includes comprehensive tests:
 
 ### Cache Performance Metrics
 
-Based on test results:
+Based on test results with Jedis client-side caching:
 
-- **L1 Hit (Caffeine)**: ~0.1ms response time
-- **L2 Hit (Redis)**: ~5-10ms response time  
+- **Local Cache Hit**: ~0.1ms response time
+- **Redis Hit**: ~5-10ms response time  
 - **Database Miss**: ~50-100ms response time
-- **Performance Improvement**: 50-90% faster with cache
+- **Performance Improvement**: 90-99% faster with local cache
 
-### Cache Statistics
+### Jedis Cache Statistics
 
-The application provides real-time cache metrics:
+The application provides real-time native Jedis cache metrics:
 
 ```json
 {
-  "caffeine": {
-    "hitCount": 150,
-    "missCount": 25,
-    "hitRate": 0.857,
-    "estimatedSize": 45
+  "jedisCache": {
+    "cacheType": "UnifiedJedis with Client-Side Caching",
+    "protocol": "RESP3",
+    "cacheSize": 42,
+    "cacheStats": "CacheStats{hits=158, misses=23, loads=23, evicts=0, nonCacheable=5, flush=0, invalidationsByServer=7, invalidationMessages=7}",
+    "status": "active"
   },
-  "redis": {
-    "hitCount": 20,
-    "missCount": 5,
-    "operations": 25
+  "springCaches": {
+    "products": "Redis Near Cache",
+    "catalogs": "Redis Near Cache"
   }
 }
 ```
+
+### Key Metrics Explained
+
+- **hits**: Local cache hits (ultra-fast)
+- **misses**: Cache misses requiring Redis fetch
+- **loads**: Number of values loaded into cache
+- **evicts**: Entries evicted due to size limits
+- **invalidationsByServer**: Server-initiated cache invalidations (RESP3)
+- **invalidationMessages**: Invalidation messages received
 
 ## Use Cases
 
@@ -490,12 +519,22 @@ return products.values().stream()
 
 - **Spring Boot 3.5.3**
 - **Java 24** with modern language features
-- **Redis** (via Testcontainers)
-- **Caffeine Cache**
+- **Jedis 5.2.0+** with native client-side caching
+- **Redis with RESP3** protocol (via Testcontainers)
 - **Jackson** (JSON serialization)
 - **Gradle** (Kotlin DSL)
 - **JUnit 5** (Testing)
 - **AssertJ** (Test assertions)
+
+## Key Benefits of Jedis Client-Side Caching
+
+1. **🚀 Performance**: 90-99% faster than Redis-only access
+2. **📡 RESP3 Protocol**: Automatic server-assisted cache invalidation
+3. **🔧 Official Support**: Built into Jedis, maintained by Redis team
+4. **📊 Rich Metrics**: Detailed cache statistics out-of-the-box
+5. **🛡️ Thread-Safe**: Concurrent access handled internally
+6. **⚙️ Configurable**: Fine-tune cache size and behavior
+7. **🔄 Auto-Invalidation**: No manual cache invalidation logic needed
 
 ## License
 

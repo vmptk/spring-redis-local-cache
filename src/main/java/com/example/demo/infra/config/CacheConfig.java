@@ -1,65 +1,54 @@
 package com.example.demo.infra.config;
 
+import com.example.demo.infra.cache.RedisNearCacheManager;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.cache.caffeine.CaffeineCacheManager;
-import org.springframework.cache.support.CompositeCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import org.springframework.data.redis.cache.RedisCacheConfiguration;
-import org.springframework.data.redis.cache.RedisCacheManager;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
-import org.springframework.data.redis.serializer.RedisSerializationContext;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
+import redis.clients.jedis.DefaultJedisClientConfig;
+import redis.clients.jedis.HostAndPort;
+import redis.clients.jedis.RedisProtocol;
+import redis.clients.jedis.UnifiedJedis;
 
 import java.time.Duration;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Configuration
 @EnableCaching
 public class CacheConfig {
 
-    @Bean
-    public CaffeineCacheManager caffeineCacheManager() {
-        var cacheManager = new CaffeineCacheManager("products", "catalogs");
-        cacheManager.setCaffeine(caffeineCacheBuilder());
-        return cacheManager;
-    }
+    @Value("${spring.cache.redis.local-max-size:1000}")
+    private int localMaxSize;
+    
+    @Value("${spring.redis.host:localhost}")
+    private String redisHost;
+    
+    @Value("${spring.redis.port:6379}")
+    private int redisPort;
 
     @Bean
-    public Caffeine<Object, Object> caffeineCacheBuilder() {
-        return Caffeine.newBuilder()
-                .expireAfterWrite(5, TimeUnit.MINUTES)
-                .maximumSize(1000)
-                .recordStats();
-    }
-
-    @Bean
-    public RedisCacheManager redisCacheManager(RedisConnectionFactory connectionFactory,
-                                              ObjectMapper redisObjectMapper) {
-        var config = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofMinutes(10))
-                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer(redisObjectMapper)))
-                .disableCachingNullValues();
-
-        return RedisCacheManager.builder(connectionFactory)
-                .cacheDefaults(config)
+    public UnifiedJedis unifiedJedis() {
+        HostAndPort endpoint = new HostAndPort(redisHost, redisPort);
+        DefaultJedisClientConfig config = DefaultJedisClientConfig.builder()
+                .protocol(RedisProtocol.RESP3)
                 .build();
+        redis.clients.jedis.csc.CacheConfig cacheConfig = redis.clients.jedis.csc.CacheConfig.builder()
+                .maxSize(localMaxSize)
+                .build();
+        return new UnifiedJedis(endpoint, config, cacheConfig);
+    }
+
+    @Bean("cacheObjectMapper")
+    public ObjectMapper cacheObjectMapper() {
+        return new ObjectMapper();
     }
 
     @Bean
     @Primary
-    public CacheManager cacheManager(CaffeineCacheManager caffeineCacheManager, 
-                                    RedisCacheManager redisCacheManager) {
-        var cacheManager = new CompositeCacheManager();
-        cacheManager.setCacheManagers(List.of(caffeineCacheManager, redisCacheManager));
-        cacheManager.setFallbackToNoOpCache(false);
-        return cacheManager;
+    public CacheManager cacheManager(UnifiedJedis unifiedJedis, @Qualifier("cacheObjectMapper") ObjectMapper cacheObjectMapper) {
+        return new RedisNearCacheManager(unifiedJedis, cacheObjectMapper);
     }
 }
