@@ -1,4 +1,4 @@
-package com.example.demo.app.controller;
+package com.example.demo.infra.rest;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.stats.CacheStats;
@@ -21,17 +21,16 @@ public class CacheMetricsController {
 
     @GetMapping
     public Map<String, Object> getCacheMetrics() {
-        Map<String, Object> metrics = new HashMap<>();
+        var metrics = new HashMap<String, Object>();
         
         for (String cacheName : cacheManager.getCacheNames()) {
             org.springframework.cache.Cache springCache = cacheManager.getCache(cacheName);
             
-            if (springCache instanceof CaffeineCache) {
-                CaffeineCache caffeineCache = (CaffeineCache) springCache;
-                Cache<Object, Object> nativeCache = caffeineCache.getNativeCache();
-                CacheStats stats = nativeCache.stats();
+            if (springCache instanceof CaffeineCache caffeineCache) {
+                var nativeCache = caffeineCache.getNativeCache();
+                var stats = nativeCache.stats();
                 
-                Map<String, Object> cacheMetrics = new HashMap<>();
+                var cacheMetrics = new HashMap<String, Object>();
                 cacheMetrics.put("hitCount", stats.hitCount());
                 cacheMetrics.put("missCount", stats.missCount());
                 cacheMetrics.put("loadSuccessCount", stats.loadSuccessCount());

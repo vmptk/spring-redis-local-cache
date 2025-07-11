@@ -448,10 +448,48 @@ logging.level.org.springframework.cache=DEBUG
 logging.level.com.github.benmanes.caffeine=DEBUG
 ```
 
+## Modern Java Features
+
+This project demonstrates **modern Java practices** using Java 24:
+
+### Type Inference with `var`
+```java
+// Type inference for cleaner code
+var cacheManager = new CaffeineCacheManager("products", "catalogs");
+var config = RedisCacheConfiguration.defaultCacheConfig();
+var productOpt = productRepository.findById(productId);
+var start = Instant.now();
+var duration = Duration.between(start, Instant.now());
+```
+
+### Pattern Matching for instanceof
+```java
+// Modern pattern matching (Java 14+)
+if (springCache instanceof CaffeineCache caffeineCache) {
+    var nativeCache = caffeineCache.getNativeCache();
+    var stats = nativeCache.stats();
+    // Use caffeineCache directly without explicit cast
+}
+```
+
+### Collection Factory Methods
+```java
+// Modern collection initialization (Java 9+)
+cacheManager.setCacheManagers(List.of(caffeineCacheManager, redisCacheManager));
+```
+
+### Stream API Enhancements
+```java
+// Modern stream collection (Java 16+)
+return products.values().stream()
+    .filter(Product::isActive)
+    .toList(); // Instead of .collect(Collectors.toList())
+```
+
 ## Technology Stack
 
 - **Spring Boot 3.5.3**
-- **Java 24**
+- **Java 24** with modern language features
 - **Redis** (via Testcontainers)
 - **Caffeine Cache**
 - **Jackson** (JSON serialization)

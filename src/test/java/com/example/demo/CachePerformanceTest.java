@@ -67,11 +67,11 @@ class CachePerformanceTest {
     @org.junit.jupiter.api.Disabled("Performance test can be flaky in test environment")
     void testCachePerformanceImprovement() {
         // Measure time without cache (first access)
-        Instant start = Instant.now();
+        var start = Instant.now();
         testProducts.forEach(product -> 
             productService.findProductById(product.getId())
         );
-        Duration firstAccessDuration = Duration.between(start, Instant.now());
+        var firstAccessDuration = Duration.between(start, Instant.now());
         System.out.println("First access (no cache) duration: " + firstAccessDuration.toMillis() + "ms");
 
         // Measure time with cache (second access)
@@ -79,7 +79,7 @@ class CachePerformanceTest {
         testProducts.forEach(product -> 
             productService.findProductById(product.getId())
         );
-        Duration secondAccessDuration = Duration.between(start, Instant.now());
+        var secondAccessDuration = Duration.between(start, Instant.now());
         System.out.println("Second access (with cache) duration: " + secondAccessDuration.toMillis() + "ms");
 
         // Cache should be significantly faster
@@ -100,8 +100,8 @@ class CachePerformanceTest {
         cacheManager.getCache("products").clear();
 
         // Concurrent access to same products
-        List<CompletableFuture<Void>> futures = new ArrayList<>();
-        Instant start = Instant.now();
+        var futures = new ArrayList<CompletableFuture<Void>>();
+        var start = Instant.now();
 
         for (int thread = 0; thread < 10; thread++) {
             CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
@@ -117,7 +117,7 @@ class CachePerformanceTest {
 
         // Wait for all threads to complete
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-        Duration duration = Duration.between(start, Instant.now());
+        var duration = Duration.between(start, Instant.now());
         
         System.out.println("Concurrent access duration: " + duration.toMillis() + "ms");
         System.out.println("Total operations: " + (10 * 5 * 20) + " product lookups");
@@ -130,7 +130,7 @@ class CachePerformanceTest {
     @org.junit.jupiter.api.Disabled("Performance test can be flaky in test environment")
     void testCacheSizeImpact() {
         // Test with increasing number of cached items
-        List<Duration> durations = new ArrayList<>();
+        var durations = new ArrayList<Duration>();
         
         for (int size : List.of(10, 50, 100)) {
             // Clear cache
@@ -141,10 +141,10 @@ class CachePerformanceTest {
                     .forEach(i -> productService.findProductById(testProducts.get(i).getId()));
             
             // Measure access time for cached items
-            Instant start = Instant.now();
+            var start = Instant.now();
             IntStream.range(0, size)
                     .forEach(i -> productService.findProductById(testProducts.get(i).getId()));
-            Duration duration = Duration.between(start, Instant.now());
+            var duration = Duration.between(start, Instant.now());
             
             durations.add(duration);
             System.out.println("Access time for " + size + " cached items: " + duration.toMillis() + "ms");
@@ -161,16 +161,16 @@ class CachePerformanceTest {
         cacheManager.getCache("products").clear();
 
         // First query - no cache
-        Instant start = Instant.now();
+        var start = Instant.now();
         List<Product> products1 = productService.findProductsByCategory("electronics");
-        Duration firstQueryDuration = Duration.between(start, Instant.now());
+        var firstQueryDuration = Duration.between(start, Instant.now());
         System.out.println("First category query duration: " + firstQueryDuration.toMillis() + "ms");
         System.out.println("Products found: " + products1.size());
 
         // Second query - with cache
         start = Instant.now();
         List<Product> products2 = productService.findProductsByCategory("electronics");
-        Duration secondQueryDuration = Duration.between(start, Instant.now());
+        var secondQueryDuration = Duration.between(start, Instant.now());
         System.out.println("Second category query duration: " + secondQueryDuration.toMillis() + "ms");
 
         // Cache should provide significant speedup

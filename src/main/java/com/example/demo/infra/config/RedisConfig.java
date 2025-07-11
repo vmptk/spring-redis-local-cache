@@ -16,7 +16,7 @@ public class RedisConfig {
 
     @Bean
     public ObjectMapper redisObjectMapper() {
-        BasicPolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
+        var ptv = BasicPolymorphicTypeValidator.builder()
                 .allowIfSubType("com.example.demo.domain")
                 .allowIfSubType("java.util")
                 .allowIfSubType("java.time")
@@ -33,11 +33,11 @@ public class RedisConfig {
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory,
                                                       ObjectMapper redisObjectMapper) {
-        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        var template = new RedisTemplate<String, Object>();
         template.setConnectionFactory(connectionFactory);
         
-        StringRedisSerializer stringSerializer = new StringRedisSerializer();
-        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper);
+        var stringSerializer = new StringRedisSerializer();
+        var jsonSerializer = new GenericJackson2JsonRedisSerializer(redisObjectMapper);
         
         template.setKeySerializer(stringSerializer);
         template.setHashKeySerializer(stringSerializer);

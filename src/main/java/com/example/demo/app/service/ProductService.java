@@ -49,12 +49,12 @@ public class ProductService {
     public Product updateProductPrice(ProductId productId, Price newPrice) {
         log.info("Updating price for product: {}", productId.getValue());
         
-        Optional<Product> productOpt = productRepository.findById(productId);
+        var productOpt = productRepository.findById(productId);
         if (productOpt.isEmpty()) {
             throw new IllegalArgumentException("Product not found: " + productId.getValue());
         }
         
-        Product product = productOpt.get();
+        var product = productOpt.get();
         product.updatePrice(newPrice);
         return productRepository.save(product);
     }
@@ -85,12 +85,12 @@ public class ProductService {
     public Product activateProduct(ProductId productId) {
         log.info("Activating product: {}", productId.getValue());
         
-        Optional<Product> productOpt = productRepository.findById(productId);
+        var productOpt = productRepository.findById(productId);
         if (productOpt.isEmpty()) {
             throw new IllegalArgumentException("Product not found: " + productId.getValue());
         }
         
-        Product product = productOpt.get();
+        var product = productOpt.get();
         product.activate();
         return productRepository.save(product);
     }
@@ -99,12 +99,12 @@ public class ProductService {
     public Product deactivateProduct(ProductId productId) {
         log.info("Deactivating product: {}", productId.getValue());
         
-        Optional<Product> productOpt = productRepository.findById(productId);
+        var productOpt = productRepository.findById(productId);
         if (productOpt.isEmpty()) {
             throw new IllegalArgumentException("Product not found: " + productId.getValue());
         }
         
-        Product product = productOpt.get();
+        var product = productOpt.get();
         product.deactivate();
         return productRepository.save(product);
     }

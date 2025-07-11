@@ -1,4 +1,4 @@
-package com.example.demo.app.controller;
+package com.example.demo.infra.rest;
 
 import com.example.demo.app.controller.dto.CreateCatalogRequest;
 import com.example.demo.app.service.ProductCatalogService;

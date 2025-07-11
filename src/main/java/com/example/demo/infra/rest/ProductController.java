@@ -1,4 +1,4 @@
-package com.example.demo.app.controller;
+package com.example.demo.infra.rest;
 
 import com.example.demo.app.controller.dto.CreateProductRequest;
 import com.example.demo.app.controller.dto.UpdatePriceRequest;

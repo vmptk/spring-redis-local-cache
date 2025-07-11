@@ -1,4 +1,4 @@
-package com.example.demo.app.controller;
+package com.example.demo.infra.rest;
 
 import com.example.demo.app.service.ProductService;
 import com.example.demo.domain.model.*;
@@ -39,7 +39,7 @@ public class CacheDemoController {
         Product savedLaptop = productService.createProduct(laptop);
         Product savedPhone = productService.createProduct(phone);
         
-        Map<String, Object> result = new HashMap<>();
+        var result = new HashMap<String, Object>();
         result.put("laptop", Map.of("id", savedLaptop.getId().getValue(), "name", savedLaptop.getDetails().getName()));
         result.put("phone", Map.of("id", savedPhone.getId().getValue(), "name", savedPhone.getDetails().getName()));
         result.put("message", "Sample products created successfully");
@@ -49,22 +49,22 @@ public class CacheDemoController {
 
     @GetMapping("/cache-performance-test/{productId}")
     public Map<String, Object> testCachePerformance(@PathVariable String productId) {
-        Map<String, Object> result = new HashMap<>();
+        var result = new HashMap<String, Object>();
         
         // First access (cold cache)
-        Instant start = Instant.now();
-        Product product1 = productService.findProductById(ProductId.of(productId)).orElse(null);
-        Duration firstAccess = Duration.between(start, Instant.now());
+        var start = Instant.now();
+        var product1 = productService.findProductById(ProductId.of(productId)).orElse(null);
+        var firstAccess = Duration.between(start, Instant.now());
         
         // Second access (warm cache)
         start = Instant.now();
-        Product product2 = productService.findProductById(ProductId.of(productId)).orElse(null);
-        Duration secondAccess = Duration.between(start, Instant.now());
+        var product2 = productService.findProductById(ProductId.of(productId)).orElse(null);
+        var secondAccess = Duration.between(start, Instant.now());
         
         // Third access (warm cache)
         start = Instant.now();
-        Product product3 = productService.findProductById(ProductId.of(productId)).orElse(null);
-        Duration thirdAccess = Duration.between(start, Instant.now());
+        var product3 = productService.findProductById(ProductId.of(productId)).orElse(null);
+        var thirdAccess = Duration.between(start, Instant.now());
         
         if (product1 != null) {
             result.put("productName", product1.getDetails().getName());
@@ -72,7 +72,7 @@ public class CacheDemoController {
             result.put("secondAccessTime", secondAccess.toMillis() + "ms");
             result.put("thirdAccessTime", thirdAccess.toMillis() + "ms");
             
-            double improvement = ((double) firstAccess.toMillis() - secondAccess.toMillis()) / firstAccess.toMillis() * 100;
+            var improvement = ((double) firstAccess.toMillis() - secondAccess.toMillis()) / firstAccess.toMillis() * 100;
             result.put("cachePerformanceImprovement", String.format("%.2f%%", improvement));
             result.put("message", "Cache performance test completed - lower times indicate cache hits");
         } else {

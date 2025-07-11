@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -67,13 +66,13 @@ public class ProductCatalog implements Serializable {
     public List<Product> findProductsByCategory(String categoryId) {
         return products.values().stream()
                 .filter(p -> p.getCategory().getId().equals(categoryId))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public List<Product> getActiveProducts() {
         return products.values().stream()
                 .filter(Product::isActive)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public int getProductCount() {

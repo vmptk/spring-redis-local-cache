@@ -17,7 +17,7 @@ import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
-import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
@@ -26,7 +26,7 @@ public class CacheConfig {
 
     @Bean
     public CaffeineCacheManager caffeineCacheManager() {
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager("products", "catalogs");
+        var cacheManager = new CaffeineCacheManager("products", "catalogs");
         cacheManager.setCaffeine(caffeineCacheBuilder());
         return cacheManager;
     }
@@ -42,7 +42,7 @@ public class CacheConfig {
     @Bean
     public RedisCacheManager redisCacheManager(RedisConnectionFactory connectionFactory,
                                               ObjectMapper redisObjectMapper) {
-        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
+        var config = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(10))
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer(redisObjectMapper)))
@@ -57,8 +57,8 @@ public class CacheConfig {
     @Primary
     public CacheManager cacheManager(CaffeineCacheManager caffeineCacheManager, 
                                     RedisCacheManager redisCacheManager) {
-        CompositeCacheManager cacheManager = new CompositeCacheManager();
-        cacheManager.setCacheManagers(Arrays.asList(caffeineCacheManager, redisCacheManager));
+        var cacheManager = new CompositeCacheManager();
+        cacheManager.setCacheManagers(List.of(caffeineCacheManager, redisCacheManager));
         cacheManager.setFallbackToNoOpCache(false);
         return cacheManager;
     }
