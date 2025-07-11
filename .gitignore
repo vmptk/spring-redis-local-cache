@@ -127,3 +127,6 @@ gradle-app.setting
 .classpath
 
 .idea
+CLAUDE.md
+.claude
+.DS_Store

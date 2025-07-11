@@ -1,3 +1,22 @@
 spring:
   application:
     name: demo
+  
+  redis:
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+        max-wait: -1ms
+  
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=5m,recordStats
+
+logging:
+  level:
+    com.example.demo: DEBUG
+    org.springframework.cache: DEBUG
