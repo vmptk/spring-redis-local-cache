@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestPropertySource;
 import redis.clients.jedis.UnifiedJedis;
 import redis.clients.jedis.csc.Cache;
 import redis.clients.jedis.csc.CacheStats;
@@ -19,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
+@TestPropertySource(locations = "classpath:application-test.yaml")
 class JedisClientSideCacheTest {
 
     @Autowired
@@ -39,9 +41,6 @@ class JedisClientSideCacheTest {
         cacheManager.getCacheNames().forEach(name -> 
             cacheManager.getCache(name).clear()
         );
-
-        // Clear Redis
-        unifiedJedis.flushAll();
 
         // Create test product
         ProductDetails details = ProductDetails.create(

@@ -1,0 +1,10 @@
+spring:
+  cache:
+    redis:
+      local-max-size: 100  # Smaller cache for testing
+
+logging:
+  level:
+    com.example.demo: DEBUG
+    org.springframework.cache: DEBUG
+    redis.clients.jedis: DEBUG
