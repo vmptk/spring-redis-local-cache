@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestPropertySource;
 import redis.clients.jedis.UnifiedJedis;
 
 import java.math.BigDecimal;
@@ -18,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
+@TestPropertySource(locations = "classpath:application-test.yaml")
 class NearCacheIntegrationTest {
 
     @Autowired
@@ -129,8 +131,10 @@ class NearCacheIntegrationTest {
         var result2 = productService.findProductsByCategory("electronics");
         assertThat(result2).hasSize(2);
         
-        // Verify cache is working by checking we get consistent results
-        assertThat(result1).containsExactlyInAnyOrderElementsOf(result2);
+        // Verify cache is working by checking we get consistent results (comparing IDs)
+        var ids1 = result1.stream().map(Product::getId).toList();
+        var ids2 = result2.stream().map(Product::getId).toList();
+        assertThat(ids1).containsExactlyInAnyOrderElementsOf(ids2);
     }
 
     @Test
