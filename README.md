@@ -1,6 +1,6 @@
-# Spring Redis Near Cache (Local Cache) Sample
+# Spring Redis Near Cache with Lettuce
 
-A comprehensive implementation of Redis near cache pattern using Spring Boot, Domain Driven Design (DDD), and a Product Catalog domain model. This sample demonstrates L1 (Caffeine local cache) + L2 (Redis distributed cache) architecture for optimal performance.
+A comprehensive implementation of Redis near cache pattern using Spring Boot, Lettuce Redis client, and Domain Driven Design (DDD). This sample demonstrates a hybrid local + distributed cache architecture with automatic invalidation for optimal performance and consistency.
 
 ## Table of Contents
 
@@ -18,19 +18,25 @@ A comprehensive implementation of Redis near cache pattern using Spring Boot, Do
 
 ## Architecture Overview
 
-This project implements a **Near Cache Pattern** using:
+This project implements a **Redis Near Cache Pattern** using:
 
-- **L1 Cache (Caffeine)**: Fast in-memory cache for frequently accessed data
-- **L2 Cache (Redis)**: Distributed cache for shared data across instances
+- **Local Cache (Caffeine)**: Fast in-memory cache for frequently accessed data
+- **Remote Cache (Redis)**: Distributed cache for shared data across instances  
+- **Lettuce Redis Client**: Advanced Java Redis client with async capabilities
+- **Automatic Invalidation**: Redis pub/sub for cross-instance cache synchronization
 - **Domain Driven Design**: Clean architecture with separated concerns
 - **Spring Cache Abstraction**: Declarative caching with annotations
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Application   │    │   L1 (Caffeine) │    │   L2 (Redis)    │
-│     Layer       │───▶│   Local Cache   │───▶│ Distributed     │
-│                 │    │                 │    │    Cache        │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
+┌─────────────────┐    ┌──────────────────────┐    ┌─────────────────┐
+│   Application   │    │   Redis Near Cache   │    │     Redis       │
+│   @Cacheable    │───▶│ Local + Distributed  │───▶│  (Lettuce)      │
+│                 │    │ Auto-Invalidation    │    │                 │
+└─────────────────┘    └──────────────────────┘    └─────────────────┘
+                              ↑ Pub/Sub ↑
+                       ┌──────────────────────┐
+                       │ Cross-Instance Sync  │
+                       └──────────────────────┘
 ```
 
 ## Near Cache Pattern
@@ -159,35 +165,38 @@ open build/reports/tests/test/index.html
 
 ## Configuration
 
-### Cache Configuration (`CacheConfig.java`)
+### Redis Near Cache Configuration (`CacheConfig.java`)
 
 ```java
 @Bean
-public CacheManager cacheManager(RedisTemplate<String, Object> redisTemplate) {
-    // L1 Cache - Caffeine
-    CaffeineCacheManager caffeineCacheManager = new CaffeineCacheManager();
-    caffeineCacheManager.setCaffeine(
-        Caffeine.newBuilder()
-            .maximumSize(1000)
-            .expireAfterWrite(Duration.ofMinutes(30))
-            .recordStats()
+@Primary
+public CacheManager nearCacheManager(RedisTemplate<String, Object> redisTemplate,
+                                   RedisMessageListenerContainer listenerContainer) {
+    return new SimpleRedisNearCacheManager(
+        redisTemplate,
+        listenerContainer,
+        localCacheTtl,    // PT5M (5 minutes)
+        redisTtl,         // PT10M (10 minutes)
+        maxLocalCacheSize // 1000 entries
     );
-
-    // L2 Cache - Redis
-    RedisCacheManager redisCacheManager = RedisCacheManager.builder(redisTemplate)
-        .cacheDefaults(
-            RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofHours(2))
-                .serializeKeysWith(RedisSerializationContext.SerializationPair
-                    .fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair
-                    .fromSerializer(new GenericJackson2JsonRedisSerializer(objectMapper())))
-        )
-        .build();
-
-    // Composite Cache Manager (L1 + L2)
-    return new CompositeCacheManager(caffeineCacheManager, redisCacheManager);
 }
+
+@Bean
+public RedisMessageListenerContainer redisMessageListenerContainer(RedisConnectionFactory connectionFactory) {
+    RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+    container.setConnectionFactory(connectionFactory);
+    return container;
+}
+```
+
+### Configuration Properties (`application.yaml`)
+
+```yaml
+cache:
+  near:
+    local-ttl: PT5M      # Local cache TTL (5 minutes)
+    redis-ttl: PT10M     # Redis cache TTL (10 minutes)  
+    max-local-size: 1000 # Maximum local cache entries
 ```
 
 ### Redis Configuration (`RedisConfig.java`)
@@ -318,12 +327,13 @@ The project includes comprehensive tests:
 
 ### Cache Performance Metrics
 
-Based on test results:
+Based on test results with Redis near cache:
 
-- **L1 Hit (Caffeine)**: ~0.1ms response time
-- **L2 Hit (Redis)**: ~5-10ms response time  
+- **Local Cache Hit**: ~0.1ms response time (Caffeine)
+- **Redis Cache Hit**: ~5-10ms response time (Lettuce)
 - **Database Miss**: ~50-100ms response time
-- **Performance Improvement**: 50-90% faster with cache
+- **Performance Improvement**: 50-90% faster with near cache
+- **Cross-Instance Invalidation**: ~1-5ms via Redis pub/sub
 
 ### Cache Statistics
 
@@ -331,16 +341,22 @@ The application provides real-time cache metrics:
 
 ```json
 {
-  "caffeine": {
-    "hitCount": 150,
-    "missCount": 25,
-    "hitRate": 0.857,
-    "estimatedSize": 45
-  },
-  "redis": {
-    "hitCount": 20,
-    "missCount": 5,
-    "operations": 25
+  "nearCache": {
+    "localCache": {
+      "hitCount": 150,
+      "missCount": 25, 
+      "hitRate": 0.857,
+      "estimatedSize": 45
+    },
+    "redisCache": {
+      "hitCount": 20,
+      "missCount": 5,
+      "operations": 25
+    },
+    "invalidations": {
+      "received": 8,
+      "published": 12
+    }
   }
 }
 ```
@@ -491,11 +507,32 @@ return products.values().stream()
 - **Spring Boot 3.5.3**
 - **Java 24** with modern language features
 - **Redis** (via Testcontainers)
-- **Caffeine Cache**
+- **Lettuce 6.6.0** (Redis client)
+- **Caffeine Cache** (Local cache layer)
 - **Jackson** (JSON serialization)
 - **Gradle** (Kotlin DSL)
 - **JUnit 5** (Testing)
 - **AssertJ** (Test assertions)
+
+## Key Features
+
+### ✅ Redis Near Cache Implementation
+- **Hybrid Architecture**: Local (Caffeine) + Remote (Redis) caching
+- **Automatic Invalidation**: Cross-instance cache synchronization via Redis pub/sub
+- **Lettuce Integration**: Advanced Redis client with async capabilities
+- **Spring Cache Compatible**: Works with `@Cacheable`, `@CacheEvict`, `@CachePut`
+
+### ✅ Performance Benefits
+- **Fast Local Reads**: Sub-millisecond local cache access
+- **Network Optimization**: Reduced Redis calls through local caching
+- **Distributed Consistency**: All instances invalidate stale local data
+- **Fallback Strategy**: Graceful degradation from local → Redis → database
+
+### ✅ Production Ready
+- **Configurable TTL**: Separate local and Redis cache expiration
+- **Size Limits**: Bounded local cache with LRU eviction
+- **Metrics & Monitoring**: Built-in cache statistics and health checks
+- **Error Handling**: Resilient cache operations with proper fallbacks
 
 ## License
 

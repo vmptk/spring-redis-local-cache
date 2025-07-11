@@ -10,11 +10,12 @@ spring:
         max-idle: 8
         min-idle: 0
         max-wait: -1ms
-  
-  cache:
-    type: caffeine
-    caffeine:
-      spec: maximumSize=1000,expireAfterWrite=5m,recordStats
+
+cache:
+  near:
+    local-ttl: PT5M
+    redis-ttl: PT10M
+    max-local-size: 1000
 
 logging:
   level:
