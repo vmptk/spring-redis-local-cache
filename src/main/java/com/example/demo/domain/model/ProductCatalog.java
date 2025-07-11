@@ -1,6 +1,7 @@
 package com.example.demo.domain.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -69,16 +70,19 @@ public class ProductCatalog implements Serializable {
                 .toList();
     }
 
+    @JsonIgnore
     public List<Product> getActiveProducts() {
         return products.values().stream()
                 .filter(Product::isActive)
                 .toList();
     }
 
+    @JsonIgnore
     public int getProductCount() {
         return products.size();
     }
 
+    @JsonIgnore
     public int getActiveProductCount() {
         return (int) products.values().stream()
                 .filter(Product::isActive)
