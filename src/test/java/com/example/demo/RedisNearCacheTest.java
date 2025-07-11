@@ -82,7 +82,7 @@ class RedisNearCacheTest {
         Product updated = productService.updateProductPrice(testProductId, newPrice);
         
         // Verify the update worked
-        assertThat(updated.getPrice().getAmount()).isEqualTo(149.99);
+        assertThat(updated.getPrice().getAmount()).isEqualTo(newPrice.getAmount());
         
         // Test passes if update completed without errors
         assertThat(updated).isNotNull();

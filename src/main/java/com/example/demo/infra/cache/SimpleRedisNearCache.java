@@ -104,7 +104,12 @@ public class SimpleRedisNearCache extends AbstractValueAdaptingCache {
             redisTemplate.opsForValue().set(keyStr, value);
         }
         
-        localCache.put(keyStr, value);
+        // Only cache non-null values in local cache (Caffeine doesn't allow null)
+        if (value != null) {
+            localCache.put(keyStr, value);
+        } else {
+            localCache.invalidate(keyStr);
+        }
         publishInvalidation(keyStr);
     }
     
@@ -119,7 +124,10 @@ public class SimpleRedisNearCache extends AbstractValueAdaptingCache {
         
         Boolean wasSet = redisTemplate.opsForValue().setIfAbsent(keyStr, value, redisTtl);
         if (Boolean.TRUE.equals(wasSet)) {
-            localCache.put(keyStr, value);
+            // Only cache non-null values in local cache (Caffeine doesn't allow null)
+            if (value != null) {
+                localCache.put(keyStr, value);
+            }
             publishInvalidation(keyStr);
             return null;
         } else {

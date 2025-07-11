@@ -2,6 +2,7 @@ package com.example.demo;
 
 import com.example.demo.app.service.ProductService;
 import com.example.demo.domain.model.*;
+import com.example.demo.infra.cache.SimpleRedisNearCache;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.stats.CacheStats;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,13 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.caffeine.CaffeineCache;
-import org.springframework.cache.caffeine.CaffeineCacheManager;
-import org.springframework.cache.support.CompositeCacheManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.RedisTemplate;
-
-import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,9 +24,6 @@ class NearCacheIntegrationTest {
 
     @Autowired
     private CacheManager cacheManager;
-    
-    @Autowired
-    private CaffeineCacheManager caffeineCacheManager;
 
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
@@ -153,14 +146,19 @@ class NearCacheIntegrationTest {
         // Save product
         productService.createProduct(testProduct);
 
-        // Clear L1 cache (Caffeine)
-        cacheManager.getCache("products").clear();
+        // Access once to populate both L1 and L2 cache
+        productService.findProductById(productId);
 
-        // Access product - should load from Redis (L2)
+        // Clear only L1 cache (local Caffeine cache), keeping Redis
+        SimpleRedisNearCache nearCache = (SimpleRedisNearCache) cacheManager.getCache("products");
+        Cache<Object, Object> localCache = (Cache<Object, Object>) nearCache.getNativeCache();
+        localCache.invalidateAll();
+
+        // Access product - should load from Redis (L2) and populate L1 again
         Product fromCache = productService.findProductById(productId).orElseThrow();
         assertThat(fromCache.getId()).isEqualTo(productId);
 
-        // Verify it's now in L1 cache
+        // Verify it's now back in L1 cache
         CacheStats stats = getCaffeineStats("products");
         assertThat(stats.missCount()).isGreaterThan(0);
     }
@@ -190,12 +188,13 @@ class NearCacheIntegrationTest {
     }
 
     private CacheStats getCaffeineStats(String cacheName) {
-        CaffeineCache caffeineCache = (CaffeineCache) caffeineCacheManager.getCache(cacheName);
-        return caffeineCache.getNativeCache().stats();
+        SimpleRedisNearCache nearCache = (SimpleRedisNearCache) cacheManager.getCache(cacheName);
+        Cache<Object, Object> caffeineCache = (Cache<Object, Object>) nearCache.getNativeCache();
+        return caffeineCache.stats();
     }
 
     private Cache<Object, Object> getNativeCaffeineCache(String cacheName) {
-        CaffeineCache caffeineCache = (CaffeineCache) caffeineCacheManager.getCache(cacheName);
-        return caffeineCache.getNativeCache();
+        SimpleRedisNearCache nearCache = (SimpleRedisNearCache) cacheManager.getCache(cacheName);
+        return (Cache<Object, Object>) nearCache.getNativeCache();
     }
 }
