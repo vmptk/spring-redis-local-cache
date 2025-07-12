@@ -1,0 +1,319 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  JAVA_VERSION: '24'
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.configureondemand=true
+
+jobs:
+  test:
+    name: Test & Quality Analysis
+    runs-on: ubuntu-latest
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Java ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'oracle'
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Run tests
+      run: ./gradlew test --continue
+      env:
+        SPRING_REDIS_HOST: localhost
+        SPRING_REDIS_PORT: 6379
+
+    - name: Generate test report
+      uses: dorny/test-reporter@v1
+      if: success() || failure()
+      with:
+        name: Test Results
+        path: '**/test-results/test/TEST-*.xml'
+        reporter: java-junit
+        fail-on-error: true
+
+    - name: Run code quality checks
+      run: ./gradlew spotlessCheck pmdMain pmdTest
+      continue-on-error: true
+
+    - name: Generate PMD report
+      if: success() || failure()
+      run: |
+        mkdir -p reports/pmd
+        cp -r build/reports/pmd/* reports/pmd/ || true
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: |
+          build/reports/tests/
+          build/test-results/
+        retention-days: 30
+
+    - name: Upload PMD reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: pmd-reports
+        path: |
+          build/reports/pmd/
+        retention-days: 30
+
+    - name: Comment PR with test results
+      uses: mikepenz/action-junit-report@v4
+      if: always() && github.event_name == 'pull_request'
+      with:
+        report_paths: '**/test-results/test/TEST-*.xml'
+        detailed_summary: true
+        include_passed: true
+
+  build:
+    name: Build & Package
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Java ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'oracle'
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Build application
+      run: ./gradlew build -x test
+
+    - name: Build Docker image
+      run: |
+        docker build -t spring-redis-cache:${{ github.sha }} .
+        docker tag spring-redis-cache:${{ github.sha }} spring-redis-cache:latest
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts
+        path: |
+          build/libs/*.jar
+          build/reports/
+        retention-days: 30
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  performance-test:
+    name: Performance Testing
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Java ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'oracle'
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Run performance tests
+      run: ./gradlew test --tests="*Performance*" --continue
+      env:
+        SPRING_REDIS_HOST: localhost
+        SPRING_REDIS_PORT: 6379
+
+    - name: Upload performance results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: performance-results
+        path: |
+          build/reports/tests/
+        retention-days: 30
+
+  publish-reports:
+    name: Publish Reports
+    runs-on: ubuntu-latest
+    needs: [test, build]
+    if: always()
+    
+    steps:
+    - name: Download test results
+      uses: actions/download-artifact@v4
+      with:
+        name: test-results
+        path: test-results
+
+    - name: Download PMD reports
+      uses: actions/download-artifact@v4
+      with:
+        name: pmd-reports
+        path: pmd-reports
+      continue-on-error: true
+
+    - name: Publish test results
+      uses: peaceiris/actions-gh-pages@v3
+      if: github.ref == 'refs/heads/main'
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: test-results
+        destination_dir: reports/tests
+        keep_files: true
+
+    - name: Publish PMD reports
+      uses: peaceiris/actions-gh-pages@v3
+      if: github.ref == 'refs/heads/main' && hashFiles('pmd-reports/**') != ''
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: pmd-reports
+        destination_dir: reports/pmd
+        keep_files: true
+
+  multi-instance-test:
+    name: Multi-Instance Integration Test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Java ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'oracle'
+
+    - name: Cache Gradle packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    - name: Build application
+      run: ./gradlew build -x test
+
+    - name: Start multi-instance setup
+      run: |
+        docker compose --profile multi-instance up -d
+        sleep 30  # Wait for services to start
+
+    - name: Test multi-instance cache synchronization
+      run: |
+        # Test instance 1
+        curl -f http://localhost:8080/api/demo/create-sample-data || exit 1
+        sleep 5
+        
+        # Check cache metrics on all instances
+        for port in 8080 8081 8082 8083; do
+          echo "Testing instance on port $port"
+          curl -f http://localhost:$port/api/cache/metrics || exit 1
+        done
+
+    - name: Collect logs
+      if: always()
+      run: |
+        mkdir -p multi-instance-logs
+        docker compose --profile multi-instance logs > multi-instance-logs/all-services.log
+
+    - name: Stop multi-instance setup
+      if: always()
+      run: docker compose --profile multi-instance down
+
+    - name: Upload multi-instance test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: multi-instance-logs
+        path: multi-instance-logs/
+        retention-days: 30
