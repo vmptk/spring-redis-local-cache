@@ -1,0 +1,117 @@
+<?xml version="1.0"?>
+<ruleset name="Spring Redis Cache PMD Rules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>PMD rules for Spring Redis Cache project with modern Java practices</description>
+
+    <!-- Best Practices -->
+    <rule ref="category/java/bestpractices.xml">
+        <!-- Exclude rules that conflict with modern Java practices -->
+        <exclude name="GuardLogStatement"/>
+        <exclude name="UseVarargs"/>
+        <exclude name="LiteralsFirstInComparisons"/>
+        <exclude name="AvoidReassigningParameters"/>
+        <exclude name="SystemPrintln"/>
+    </rule>
+
+    <!-- Code Style -->
+    <rule ref="category/java/codestyle.xml">
+        <!-- Exclude rules that conflict with Lombok and modern Java -->
+        <exclude name="OnlyOneReturn"/>
+        <exclude name="AtLeastOneConstructor"/>
+        <exclude name="CallSuperInConstructor"/>
+        <exclude name="CommentDefaultAccessModifier"/>
+        <exclude name="LocalVariableCouldBeFinal"/>
+        <exclude name="MethodArgumentCouldBeFinal"/>
+        <exclude name="ShortVariable"/>
+        <exclude name="LongVariable"/>
+        <exclude name="TooManyStaticImports"/>
+        <exclude name="UnnecessaryLocalBeforeReturn"/>
+        <exclude name="UseUnderscoresInNumericLiterals"/>
+        <exclude name="UseExplicitTypes"/>
+    </rule>
+
+    <!-- Design -->
+    <rule ref="category/java/design.xml">
+        <!-- Exclude overly restrictive design rules -->
+        <exclude name="LawOfDemeter"/>
+        <exclude name="LoosePackageCoupling"/>
+        <exclude name="UseUtilityClass"/>
+        <exclude name="AvoidCatchingGenericException"/>
+        <exclude name="AvoidThrowingRawExceptionTypes"/>
+        <exclude name="SignatureDeclareThrowsException"/>
+        <exclude name="TooManyMethods"/>
+        <exclude name="ExcessiveImports"/>
+        <exclude name="CouplingBetweenObjects"/>
+        <exclude name="DataClass"/>
+    </rule>
+
+    <!-- Documentation -->
+    <rule ref="category/java/documentation.xml">
+        <!-- Relax documentation requirements -->
+        <exclude name="CommentRequired"/>
+        <exclude name="CommentSize"/>
+        <exclude name="UncommentedEmptyMethodBody"/>
+        <exclude name="UncommentedEmptyConstructor"/>
+    </rule>
+
+    <!-- Error Prone -->
+    <rule ref="category/java/errorprone.xml">
+        <!-- Exclude rules that may not apply to modern Spring patterns -->
+        <exclude name="NullAssignment"/>
+        <exclude name="AvoidFieldNameMatchingMethodName"/>
+        <exclude name="AvoidDuplicateLiterals"/>
+        <exclude name="ConstructorCallsOverridableMethod"/>
+        <exclude name="UseProperClassLoader"/>
+        <exclude name="AvoidFieldNameMatchingTypeName"/>
+        <exclude name="TestClassWithoutTestCases"/>
+    </rule>
+
+    <!-- Multithreading -->
+    <rule ref="category/java/multithreading.xml">
+        <!-- Include important concurrency rules -->
+        <exclude name="UseConcurrentHashMap"/>
+        <exclude name="AvoidSynchronizedAtMethodLevel"/>
+        <exclude name="AvoidUsingVolatile"/>
+    </rule>
+
+    <!-- Performance -->
+    <rule ref="category/java/performance.xml">
+        <!-- Exclude rules that may conflict with modern collections -->
+        <exclude name="AvoidInstantiatingObjectsInLoops"/>
+        <exclude name="OptimizableToArrayCall"/>
+        <exclude name="UseStringBufferForStringAppends"/>
+        <exclude name="ConsecutiveLiteralAppends"/>
+        <exclude name="ConsecutiveAppendsShouldReuse"/>
+        <exclude name="InefficientStringBuffering"/>
+        <exclude name="StringInstantiation"/>
+        <exclude name="UseArrayListInsteadOfVector"/>
+        <exclude name="InsufficientStringBufferDeclaration"/>
+        <exclude name="AppendCharacterWithChar"/>
+    </rule>
+
+    <!-- Security -->
+    <rule ref="category/java/security.xml"/>
+
+    <!-- Configure cyclomatic complexity -->
+    <rule ref="category/java/design.xml/CyclomaticComplexity">
+        <properties>
+            <property name="classReportLevel" value="80"/>
+            <property name="methodReportLevel" value="15"/>
+            <property name="cycloOptions" value=""/>
+        </properties>
+    </rule>
+
+    <!-- Configure NCSS (Non-Commenting Source Statements) -->
+    <rule ref="category/java/design.xml/NcssCount">
+        <properties>
+            <property name="methodReportLevel" value="60"/>
+            <property name="classReportLevel" value="500"/>
+            <property name="ncssOptions" value=""/>
+        </properties>
+    </rule>
+
+
+</ruleset>

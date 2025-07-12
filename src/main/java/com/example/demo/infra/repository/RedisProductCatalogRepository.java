@@ -1,20 +1,22 @@
 package com.example.demo.infra.repository;
 
-import com.example.demo.domain.model.ProductCatalog;
-import com.example.demo.domain.repository.ProductCatalogRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Repository;
+
+import com.example.demo.domain.model.ProductCatalog;
+import com.example.demo.domain.repository.ProductCatalogRepository;
+
+import lombok.RequiredArgsConstructor;
+
 @Repository
 @RequiredArgsConstructor
 public class RedisProductCatalogRepository implements ProductCatalogRepository {
-    
+
     private static final String KEY_PREFIX = "catalog:";
     private final RedisTemplate<String, Object> redisTemplate;
 
@@ -38,7 +40,7 @@ public class RedisProductCatalogRepository implements ProductCatalogRepository {
         if (keys == null) {
             return List.of();
         }
-        
+
         return keys.stream()
                 .map(key -> (ProductCatalog) redisTemplate.opsForValue().get(key))
                 .filter(catalog -> catalog != null)

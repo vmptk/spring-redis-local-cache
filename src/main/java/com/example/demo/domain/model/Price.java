@@ -1,28 +1,25 @@
 package com.example.demo.domain.model;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Currency;
 
-@Value
-public class Price implements Serializable {
-    BigDecimal amount;
-    Currency currency;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public record Price(BigDecimal amount, Currency currency) implements Serializable {
 
     @JsonCreator
-    public Price(@JsonProperty("amount") BigDecimal amount, 
-                 @JsonProperty("currency") Currency currency) {
+    public Price(@JsonProperty("amount") BigDecimal amount, @JsonProperty("currency") Currency currency) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Price amount must be non-negative");
+        }
         this.amount = amount;
         this.currency = currency;
     }
 
     public static Price of(BigDecimal amount, String currencyCode) {
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Price amount must be non-negative");
-        }
         return new Price(amount, Currency.getInstance(currencyCode));
     }
 
@@ -31,6 +28,6 @@ public class Price implements Serializable {
     }
 
     public String format() {
-        return currency.getSymbol() + amount.setScale(2, java.math.RoundingMode.HALF_UP);
+        return currency.getSymbol() + amount.setScale(2, RoundingMode.HALF_UP);
     }
 }

@@ -1,7 +1,9 @@
 package com.example.demo.infra.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.benmanes.caffeine.cache.Caffeine;
+import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
@@ -16,9 +18,8 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-import java.time.Duration;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
 @Configuration
 @EnableCaching
@@ -34,19 +35,21 @@ public class CacheConfig {
     @Bean
     public Caffeine<Object, Object> caffeineCacheBuilder() {
         return Caffeine.newBuilder()
-                .expireAfterWrite(2, TimeUnit.MINUTES)  // Shorter TTL for simulation
-                .expireAfterAccess(1, TimeUnit.MINUTES)  // Evict if not accessed
-                .maximumSize(500)  // Smaller cache for testing eviction
+                .expireAfterWrite(2, TimeUnit.MINUTES) // Shorter TTL for simulation
+                .expireAfterAccess(1, TimeUnit.MINUTES) // Evict if not accessed
+                .maximumSize(500) // Smaller cache for testing eviction
                 .recordStats();
     }
 
     @Bean
-    public RedisCacheManager redisCacheManager(RedisConnectionFactory connectionFactory,
-                                              ObjectMapper redisObjectMapper) {
+    public RedisCacheManager redisCacheManager(
+            RedisConnectionFactory connectionFactory, ObjectMapper redisObjectMapper) {
         var config = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofMinutes(5))  // Shorter TTL for simulation
-                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer(redisObjectMapper)))
+                .entryTtl(Duration.ofMinutes(5)) // Shorter TTL for simulation
+                .serializeKeysWith(
+                        RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(
+                        new GenericJackson2JsonRedisSerializer(redisObjectMapper)))
                 .disableCachingNullValues();
 
         return RedisCacheManager.builder(connectionFactory)
@@ -56,8 +59,7 @@ public class CacheConfig {
 
     @Bean
     @Primary
-    public CacheManager cacheManager(CaffeineCacheManager caffeineCacheManager, 
-                                    RedisCacheManager redisCacheManager) {
+    public CacheManager cacheManager(CaffeineCacheManager caffeineCacheManager, RedisCacheManager redisCacheManager) {
         var cacheManager = new CompositeCacheManager();
         cacheManager.setCacheManagers(List.of(caffeineCacheManager, redisCacheManager));
         cacheManager.setFallbackToNoOpCache(false);

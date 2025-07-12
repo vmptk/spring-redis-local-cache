@@ -1,22 +1,24 @@
 package com.example.demo.domain.model;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Value;
 import java.io.Serializable;
 
-@Value
-public class ProductDetails implements Serializable {
-    String name;
-    String description;
-    String brand;
-    String sku;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+public record ProductDetails(String name, String description, String brand, String sku) implements Serializable {
 
     @JsonCreator
-    public ProductDetails(@JsonProperty("name") String name,
-                         @JsonProperty("description") String description,
-                         @JsonProperty("brand") String brand,
-                         @JsonProperty("sku") String sku) {
+    public ProductDetails(
+            @JsonProperty("name") String name,
+            @JsonProperty("description") String description,
+            @JsonProperty("brand") String brand,
+            @JsonProperty("sku") String sku) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Product name cannot be null or empty");
+        }
+        if (sku == null || sku.isBlank()) {
+            throw new IllegalArgumentException("Product SKU cannot be null or empty");
+        }
         this.name = name;
         this.description = description;
         this.brand = brand;
@@ -24,12 +26,6 @@ public class ProductDetails implements Serializable {
     }
 
     public static ProductDetails create(String name, String description, String brand, String sku) {
-        if (name == null || name.trim().isEmpty()) {
-            throw new IllegalArgumentException("Product name cannot be null or empty");
-        }
-        if (sku == null || sku.trim().isEmpty()) {
-            throw new IllegalArgumentException("Product SKU cannot be null or empty");
-        }
         return new ProductDetails(name, description, brand, sku);
     }
 }

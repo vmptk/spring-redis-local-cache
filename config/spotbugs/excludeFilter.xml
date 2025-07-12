@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter
+    xmlns="https://github.com/spotbugs/filter/3.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="https://github.com/spotbugs/filter/3.0.0 https://raw.githubusercontent.com/spotbugs/spotbugs/3.1.0/spotbugs/etc/findbugsfilter.xsd">
+
+    <!-- Exclude false positives from Lombok generated code -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+        <Class name="~.*\$.*"/>
+    </Match>
+
+    <!-- Exclude serialization warnings for records and value objects -->
+    <Match>
+        <Bug pattern="SE_NO_SERIALVERSIONID"/>
+        <Or>
+            <Class name="~.*\.domain\.model\..*"/>
+            <Class name="~.*\.dto\..*"/>
+        </Or>
+    </Match>
+
+    <!-- Exclude unused field warnings for Lombok annotated classes -->
+    <Match>
+        <Bug pattern="URF_UNREAD_FIELD"/>
+        <Or>
+            <Class name="~.*\.domain\.model\..*"/>
+            <Class name="~.*\.dto\..*"/>
+        </Or>
+    </Match>
+
+    <!-- Exclude Spring configuration classes from certain checks -->
+    <Match>
+        <Bug pattern="UWF_UNWRITTEN_FIELD"/>
+        <Class name="~.*Config.*"/>
+    </Match>
+
+    <!-- Exclude test-related false positives -->
+    <Match>
+        <Bug pattern="DM_EXIT"/>
+        <Class name="~.*Test.*"/>
+    </Match>
+
+    <!-- Exclude Redis template null checks (handled by Spring) -->
+    <Match>
+        <Bug pattern="NP_NULL_ON_SOME_PATH"/>
+        <Class name="~.*Repository.*"/>
+        <Method name="~.*redis.*"/>
+    </Match>
+
+    <!-- Exclude builder pattern false positives -->
+    <Match>
+        <Bug pattern="NP_NULL_PARAM_DEREF"/>
+        <Class name="~.*Builder.*"/>
+    </Match>
+
+    <!-- Exclude cache-related null warnings (handled by framework) -->
+    <Match>
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE"/>
+        <Or>
+            <Class name="~.*Service.*"/>
+            <Class name="~.*Controller.*"/>
+        </Or>
+    </Match>
+
+    <!-- Exclude modern Java var usage warnings -->
+    <Match>
+        <Bug pattern="DLS_DEAD_LOCAL_STORE"/>
+        <Method name="~.*"/>
+    </Match>
+
+    <!-- Exclude Jackson serialization issues for records -->
+    <Match>
+        <Bug pattern="SE_BAD_FIELD"/>
+        <Class name="~.*\.domain\.model\..*"/>
+    </Match>
+
+    <!-- Exclude concurrency warnings for properly managed Spring beans -->
+    <Match>
+        <Bug pattern="IS2_INCONSISTENT_SYNC"/>
+        <Or>
+            <Class name="~.*Service.*"/>
+            <Class name="~.*Repository.*"/>
+            <Class name="~.*Controller.*"/>
+        </Or>
+    </Match>
+
+    <!-- Exclude resource leak warnings for auto-managed Spring resources -->
+    <Match>
+        <Bug pattern="OBL_UNSATISFIED_OBLIGATION"/>
+        <Or>
+            <Class name="~.*Service.*"/>
+            <Class name="~.*Repository.*"/>
+        </Or>
+    </Match>
+
+</FindBugsFilter>

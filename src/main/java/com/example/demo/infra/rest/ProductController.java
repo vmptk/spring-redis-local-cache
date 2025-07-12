@@ -1,70 +1,64 @@
 package com.example.demo.infra.rest;
 
-import com.example.demo.app.controller.dto.CreateProductRequest;
-import com.example.demo.app.controller.dto.UpdatePriceRequest;
-import com.example.demo.app.service.ProductService;
-import com.example.demo.domain.model.*;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import com.example.demo.app.controller.dto.CreateProductRequest;
+import com.example.demo.app.controller.dto.UpdatePriceRequest;
+import com.example.demo.app.service.ProductService;
+import com.example.demo.domain.model.*;
+
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
 public class ProductController {
-    
+
     private final ProductService productService;
 
     @PostMapping
     public ResponseEntity<Product> createProduct(@RequestBody CreateProductRequest request) {
-        ProductDetails details = ProductDetails.create(
-                request.getName(),
-                request.getDescription(),
-                request.getBrand(),
-                request.getSku()
-        );
-        
-        Price price = Price.of(request.getPrice(), request.getCurrency());
-        
-        Category category = Category.create(
-                request.getCategoryId(),
-                request.getCategoryName(),
-                request.getCategoryDescription()
-        );
-        
-        Product product = Product.create(details, price, category);
-        Product savedProduct = productService.createProduct(product);
-        
+        var details = ProductDetails.create(request.name(), request.description(), request.brand(), request.sku());
+
+        var price = Price.of(request.price(), request.currency());
+
+        var category = Category.create(request.categoryId(), request.categoryName(), request.categoryDescription());
+
+        var product = Product.create(details, price, category);
+        var savedProduct = productService.createProduct(product);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
     }
 
     @GetMapping("/{productId}")
     public ResponseEntity<Product> getProduct(@PathVariable String productId) {
-        return productService.findProductById(ProductId.of(productId))
+        return productService
+                .findProductById(ProductId.of(productId))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{productId}/price")
-    public ResponseEntity<Product> updatePrice(@PathVariable String productId, 
-                                             @RequestBody UpdatePriceRequest request) {
-        Price newPrice = Price.of(request.getPrice(), request.getCurrency());
-        Product updatedProduct = productService.updateProductPrice(ProductId.of(productId), newPrice);
+    public ResponseEntity<Product> updatePrice(
+            @PathVariable String productId, @RequestBody UpdatePriceRequest request) {
+        var newPrice = Price.of(request.price(), request.currency());
+        var updatedProduct = productService.updateProductPrice(ProductId.of(productId), newPrice);
         return ResponseEntity.ok(updatedProduct);
     }
 
     @PutMapping("/{productId}/activate")
     public ResponseEntity<Product> activateProduct(@PathVariable String productId) {
-        Product product = productService.activateProduct(ProductId.of(productId));
+        var product = productService.activateProduct(ProductId.of(productId));
         return ResponseEntity.ok(product);
     }
 
     @PutMapping("/{productId}/deactivate")
     public ResponseEntity<Product> deactivateProduct(@PathVariable String productId) {
-        Product product = productService.deactivateProduct(ProductId.of(productId));
+        var product = productService.deactivateProduct(ProductId.of(productId));
         return ResponseEntity.ok(product);
     }
 

@@ -1,8 +1,7 @@
 package com.example.demo;
 
-import com.example.demo.app.service.ProductCatalogService;
-import com.example.demo.app.service.ProductService;
-import com.example.demo.domain.model.*;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +10,9 @@ import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.RedisTemplate;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import com.example.demo.app.service.ProductCatalogService;
+import com.example.demo.app.service.ProductService;
+import com.example.demo.domain.model.*;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
@@ -34,9 +35,7 @@ class ProductCatalogCacheTest {
     @BeforeEach
     void setUp() {
         // Clear caches
-        cacheManager.getCacheNames().forEach(name -> 
-            cacheManager.getCache(name).clear()
-        );
+        cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
 
         // Clear Redis
         redisTemplate.getConnectionFactory().getConnection().flushAll();
@@ -66,13 +65,13 @@ class ProductCatalogCacheTest {
 
         // Create product
         ProductDetails details = ProductDetails.create("Spring Shoe", "Comfortable shoe", "Nike", "SHOE-001");
-        Product product = Product.create(details, Price.of(129.99, "USD"), 
-            Category.create("footwear", "Footwear", "Shoes and boots"));
+        Product product = Product.create(
+                details, Price.of(129.99, "USD"), Category.create("footwear", "Footwear", "Shoes and boots"));
         Product savedProduct = productService.createProduct(product);
 
         // Add product to catalog
         ProductCatalog updatedCatalog = catalogService.addProductToCatalog("spring-2024", savedProduct);
-        
+
         // Verify product was added
         assertThat(updatedCatalog.getProductCount()).isEqualTo(1);
         assertThat(updatedCatalog.findProduct(savedProduct.getId())).isPresent();
@@ -86,12 +85,12 @@ class ProductCatalogCacheTest {
     void testRemoveProductFromCatalogEvictsCache() {
         // Create catalog with product
         catalogService.createCatalog(testCatalog);
-        
+
         ProductDetails details = ProductDetails.create("Spring Shoe", "Comfortable shoe", "Nike", "SHOE-001");
-        Product product = Product.create(details, Price.of(129.99, "USD"), 
-            Category.create("footwear", "Footwear", "Shoes and boots"));
+        Product product = Product.create(
+                details, Price.of(129.99, "USD"), Category.create("footwear", "Footwear", "Shoes and boots"));
         Product savedProduct = productService.createProduct(product);
-        
+
         catalogService.addProductToCatalog("spring-2024", savedProduct);
 
         // Remove product

@@ -1,53 +1,56 @@
 package com.example.demo.infra.rest;
 
-import com.example.demo.app.controller.dto.CreateCatalogRequest;
-import com.example.demo.app.service.ProductCatalogService;
-import com.example.demo.app.service.ProductService;
-import com.example.demo.domain.model.Product;
-import com.example.demo.domain.model.ProductCatalog;
-import com.example.demo.domain.model.ProductId;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import com.example.demo.app.controller.dto.CreateCatalogRequest;
+import com.example.demo.app.service.ProductCatalogService;
+import com.example.demo.app.service.ProductService;
+import com.example.demo.domain.model.ProductCatalog;
+import com.example.demo.domain.model.ProductId;
+
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/catalogs")
 @RequiredArgsConstructor
 public class ProductCatalogController {
-    
+
     private final ProductCatalogService catalogService;
     private final ProductService productService;
 
     @PostMapping
     public ResponseEntity<ProductCatalog> createCatalog(@RequestBody CreateCatalogRequest request) {
-        ProductCatalog catalog = ProductCatalog.create(request.getCatalogId(), request.getName());
-        ProductCatalog savedCatalog = catalogService.createCatalog(catalog);
+        var catalog = ProductCatalog.create(request.catalogId(), request.name());
+        var savedCatalog = catalogService.createCatalog(catalog);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedCatalog);
     }
 
     @GetMapping("/{catalogId}")
     public ResponseEntity<ProductCatalog> getCatalog(@PathVariable String catalogId) {
-        return catalogService.findCatalogById(catalogId)
+        return catalogService
+                .findCatalogById(catalogId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping("/{catalogId}/products/{productId}")
-    public ResponseEntity<ProductCatalog> addProductToCatalog(@PathVariable String catalogId,
-                                                            @PathVariable String productId) {
-        Product product = productService.findProductById(ProductId.of(productId))
+    public ResponseEntity<ProductCatalog> addProductToCatalog(
+            @PathVariable String catalogId, @PathVariable String productId) {
+        var product = productService
+                .findProductById(ProductId.of(productId))
                 .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
-        
-        ProductCatalog updatedCatalog = catalogService.addProductToCatalog(catalogId, product);
+
+        var updatedCatalog = catalogService.addProductToCatalog(catalogId, product);
         return ResponseEntity.ok(updatedCatalog);
     }
 
     @DeleteMapping("/{catalogId}/products/{productId}")
-    public ResponseEntity<Void> removeProductFromCatalog(@PathVariable String catalogId,
-                                                       @PathVariable String productId) {
+    public ResponseEntity<Void> removeProductFromCatalog(
+            @PathVariable String catalogId, @PathVariable String productId) {
         catalogService.removeProductFromCatalog(catalogId, ProductId.of(productId));
         return ResponseEntity.noContent().build();
     }

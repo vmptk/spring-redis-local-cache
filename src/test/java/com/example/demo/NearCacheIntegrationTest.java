@@ -1,9 +1,7 @@
 package com.example.demo;
 
-import com.example.demo.app.service.ProductService;
-import com.example.demo.domain.model.*;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.stats.CacheStats;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,13 +9,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
-import org.springframework.cache.support.CompositeCacheManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.RedisTemplate;
 
-import java.math.BigDecimal;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import com.example.demo.app.service.ProductService;
+import com.example.demo.domain.model.*;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.stats.CacheStats;
 
 @Import(TestcontainersConfiguration.class)
 @SpringBootTest
@@ -28,7 +26,7 @@ class NearCacheIntegrationTest {
 
     @Autowired
     private CacheManager cacheManager;
-    
+
     @Autowired
     private CaffeineCacheManager caffeineCacheManager;
 
@@ -41,23 +39,17 @@ class NearCacheIntegrationTest {
     @BeforeEach
     void setUp() {
         // Clear caches
-        cacheManager.getCacheNames().forEach(name -> 
-            cacheManager.getCache(name).clear()
-        );
+        cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
 
         // Clear Redis
         redisTemplate.getConnectionFactory().getConnection().flushAll();
 
         // Create test product
-        ProductDetails details = ProductDetails.create(
-                "Test Product",
-                "Test Description",
-                "Test Brand",
-                "TEST-SKU-001"
-        );
+        ProductDetails details =
+                ProductDetails.create("Test Product", "Test Description", "Test Brand", "TEST-SKU-001");
         Price price = Price.of(99.99, "USD");
         Category category = Category.create("electronics", "Electronics", "Electronic products");
-        
+
         testProduct = Product.create(details, price, category);
         productId = testProduct.getId();
     }
@@ -74,7 +66,7 @@ class NearCacheIntegrationTest {
 
         // Clear cache to ensure controlled test conditions
         cacheManager.getCache("products").clear();
-        
+
         // Get stats after clearing cache
         CacheStats statsAfterClear = getCaffeineStats("products");
         long missCountAfterClear = statsAfterClear.missCount();
@@ -82,13 +74,13 @@ class NearCacheIntegrationTest {
 
         // First access - should be a cache miss (loading from Redis or DB)
         productService.findProductById(productId);
-        
+
         CacheStats statsAfterFirst = getCaffeineStats("products");
         assertThat(statsAfterFirst.missCount()).isGreaterThan(missCountAfterClear);
 
         // Second access - should be a cache hit
         productService.findProductById(productId);
-        
+
         CacheStats statsAfterSecond = getCaffeineStats("products");
         assertThat(statsAfterSecond.hitCount()).isGreaterThan(hitCountAfterClear);
         assertThat(statsAfterSecond.missCount()).isEqualTo(statsAfterFirst.missCount());
@@ -108,7 +100,7 @@ class NearCacheIntegrationTest {
 
         // Get updated product
         Product updatedProduct = productService.findProductById(productId).orElseThrow();
-        
+
         // Verify price was updated
         assertThat(updatedProduct.getPrice()).isEqualTo(newPrice);
     }
@@ -132,7 +124,7 @@ class NearCacheIntegrationTest {
     void testCategoryQueryCaching() {
         // Create multiple products in same category
         Product product1 = productService.createProduct(testProduct);
-        
+
         ProductDetails details2 = ProductDetails.create("Product 2", "Desc 2", "Brand 2", "SKU-002");
         Product product2 = Product.create(details2, Price.of(149.99, "USD"), product1.getCategory());
         productService.createProduct(product2);
@@ -143,13 +135,13 @@ class NearCacheIntegrationTest {
 
         // First query - cache miss
         productService.findProductsByCategory("electronics");
-        
+
         CacheStats statsAfterFirst = getCaffeineStats("products");
         assertThat(statsAfterFirst.missCount()).isEqualTo(missCountBefore + 1);
 
         // Second query - cache hit
         productService.findProductsByCategory("electronics");
-        
+
         CacheStats statsAfterSecond = getCaffeineStats("products");
         assertThat(statsAfterSecond.hitCount()).isEqualTo(statsBefore.hitCount() + 1);
     }
@@ -175,7 +167,7 @@ class NearCacheIntegrationTest {
     void testCacheEvictAll() {
         // Create multiple products
         productService.createProduct(testProduct);
-        
+
         ProductDetails details2 = ProductDetails.create("Product 2", "Desc 2", "Brand 2", "SKU-002");
         Product product2 = Product.create(details2, Price.of(149.99, "USD"), testProduct.getCategory());
         productService.createProduct(product2);

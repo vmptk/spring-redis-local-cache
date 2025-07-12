@@ -1,16 +1,21 @@
 package com.example.demo.domain.model;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 @Getter
+@Builder(toBuilder = true)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Product implements Serializable {
+    private static final long serialVersionUID = 1L;
     private ProductId id;
     private ProductDetails details;
     private Price price;
@@ -20,13 +25,15 @@ public class Product implements Serializable {
     private LocalDateTime updatedAt;
 
     @JsonCreator
-    public Product(@JsonProperty("id") ProductId id,
-                  @JsonProperty("details") ProductDetails details,
-                  @JsonProperty("price") Price price,
-                  @JsonProperty("category") Category category,
-                  @JsonProperty("active") boolean active,
-                  @JsonProperty("createdAt") LocalDateTime createdAt,
-                  @JsonProperty("updatedAt") LocalDateTime updatedAt) {
+    @Builder
+    public Product(
+            @JsonProperty("id") ProductId id,
+            @JsonProperty("details") ProductDetails details,
+            @JsonProperty("price") Price price,
+            @JsonProperty("category") Category category,
+            @JsonProperty("active") boolean active,
+            @JsonProperty("createdAt") LocalDateTime createdAt,
+            @JsonProperty("updatedAt") LocalDateTime updatedAt) {
         this.id = id;
         this.details = details;
         this.price = price;
@@ -37,15 +44,16 @@ public class Product implements Serializable {
     }
 
     public static Product create(ProductDetails details, Price price, Category category) {
-        return new Product(
-                ProductId.generate(),
-                details,
-                price,
-                category,
-                true,
-                LocalDateTime.now(),
-                LocalDateTime.now()
-        );
+        var now = LocalDateTime.now();
+        return Product.builder()
+                .id(ProductId.generate())
+                .details(details)
+                .price(price)
+                .category(category)
+                .active(true)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
     }
 
     public void updatePrice(Price newPrice) {

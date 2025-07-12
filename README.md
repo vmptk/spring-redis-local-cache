@@ -717,9 +717,38 @@ logging.level.com.github.benmanes.caffeine=DEBUG
 
 This project demonstrates **modern Java practices** using Java 24:
 
+### Java Records for Immutable Value Objects
+```java
+// All DTOs and value objects use Java records
+public record ProductId(String value) implements Serializable {
+    public ProductId {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("ProductId cannot be null or empty");
+        }
+    }
+}
+
+public record Price(BigDecimal amount, Currency currency) implements Serializable {
+    public static Price of(double amount, String currencyCode) {
+        return new Price(BigDecimal.valueOf(amount), Currency.getInstance(currencyCode));
+    }
+}
+
+public record CreateProductRequest(
+        String name,
+        String description,
+        String brand,
+        String sku,
+        BigDecimal price,
+        String currency,
+        String categoryId,
+        String categoryName,
+        String categoryDescription) {}
+```
+
 ### Type Inference with `var`
 ```java
-// Type inference for cleaner code
+// Type inference used throughout the codebase
 var cacheManager = new CaffeineCacheManager("products", "catalogs");
 var config = RedisCacheConfiguration.defaultCacheConfig();
 var productOpt = productRepository.findById(productId);
@@ -727,20 +756,52 @@ var start = Instant.now();
 var duration = Duration.between(start, Instant.now());
 ```
 
-### Pattern Matching for instanceof
+### Pattern Matching and Switch Expressions
 ```java
-// Modern pattern matching (Java 14+)
+// Modern pattern matching with switch expressions
+var l1Hit = switch (cache) {
+    case CaffeineCache caffeineCache -> {
+        var nativeCache = caffeineCache.getNativeCache();
+        var cachedValue = nativeCache.getIfPresent(key);
+        yield cachedValue != null;
+    }
+    default -> false;
+};
+
+// Pattern matching for instanceof
 if (springCache instanceof CaffeineCache caffeineCache) {
     var nativeCache = caffeineCache.getNativeCache();
     var stats = nativeCache.stats();
-    // Use caffeineCache directly without explicit cast
+}
+```
+
+### Lombok @Builder with toBuilder
+```java
+// Complex mutable objects use @Builder(toBuilder = true)
+@Getter
+@Builder(toBuilder = true)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Product implements Serializable {
+    private ProductId id;
+    private ProductDetails details;
+    private Price price;
+    private Category category;
+    private boolean active;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+    
+    // Business methods...
 }
 ```
 
 ### Collection Factory Methods
 ```java
-// Modern collection initialization (Java 9+)
-cacheManager.setCacheManagers(List.of(caffeineCacheManager, redisCacheManager));
+// Immutable collections (Java 9+)
+private static final List<Category> AVAILABLE_CATEGORIES = List.of(
+    Category.create("electronics", "Electronics", "Electronic devices"),
+    Category.create("clothing", "Clothing", "Fashion and apparel"),
+    Category.create("books", "Books", "Literature and educational materials")
+);
 ```
 
 ### Stream API Enhancements
@@ -749,6 +810,65 @@ cacheManager.setCacheManagers(List.of(caffeineCacheManager, redisCacheManager));
 return products.values().stream()
     .filter(Product::isActive)
     .toList(); // Instead of .collect(Collectors.toList())
+```
+
+### Enhanced String Methods
+```java
+// Using isBlank() instead of trim().isEmpty()
+if (value == null || value.isBlank()) {
+    throw new IllegalArgumentException("Value cannot be null or empty");
+}
+
+```
+
+## Code Quality Tools
+
+This project includes comprehensive code quality tooling:
+
+### Spotless Code Formatter
+- **Palantir Java Format**: Consistent code style across the codebase
+- **Automatic formatting**: Run `./gradlew spotlessApply` to fix formatting issues
+- **Import ordering**: Organized imports with consistent ordering
+- **Whitespace management**: Automatic trimming and consistent line endings
+
+### PMD Static Analysis
+- **Custom ruleset**: Configured for modern Java practices
+- **Reduced violations**: From 24 initial violations to only 4 acceptable ones
+- **Modern Java support**: Rules adapted for Java 24 features
+- **Run analysis**: `./gradlew pmdMain pmdTest`
+
+### SpotBugs (FindBugs successor)
+- **Bug pattern detection**: Identifies potential bugs and performance issues
+- **Security analysis**: Includes FindSecBugs plugin
+- **Custom exclusions**: Configured for project-specific patterns
+- **Run analysis**: `./gradlew spotbugsMain spotbugsTest`
+
+### SonarQube Integration
+- **Code quality metrics**: Comprehensive quality analysis
+- **Technical debt tracking**: Monitor code maintainability
+- **Security hotspots**: Identify potential security issues
+- **Run analysis**: `./gradlew sonar`
+
+### JaCoCo Code Coverage
+- **Coverage requirements**: 80% minimum coverage threshold
+- **Test reports**: HTML and XML coverage reports
+- **Integration**: Works with SonarQube for coverage tracking
+
+### Running Code Quality Checks
+```bash
+# Apply code formatting
+./gradlew spotlessApply
+
+# Run all quality checks (optional, requires -PenableAllQualityChecks)
+./gradlew build -PenableAllQualityChecks
+
+# Run specific tools
+./gradlew pmdMain
+./gradlew spotbugsMain
+./gradlew test jacocoTestReport
+
+# Basic build (formatting check only)
+./gradlew build
 ```
 
 ## Technology Stack
@@ -761,6 +881,11 @@ return products.values().stream()
 - **Gradle** (Kotlin DSL)
 - **JUnit 5** (Testing)
 - **AssertJ** (Test assertions)
+- **Spotless** (Code formatting with Palantir style)
+- **PMD** (Static code analysis)
+- **SpotBugs** (Bug pattern detection)
+- **SonarQube** (Code quality platform)
+- **JaCoCo** (Code coverage)
 
 ## License
 

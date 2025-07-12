@@ -1,23 +1,25 @@
 package com.example.demo.app.service;
 
-import com.example.demo.domain.model.*;
-import com.example.demo.domain.repository.ProductCatalogRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
+import com.example.demo.domain.model.*;
+import com.example.demo.domain.repository.ProductCatalogRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProductCatalogService {
-    
+
     private final ProductCatalogRepository catalogRepository;
 
     @Cacheable(value = "catalogs", key = "#catalogId")
@@ -45,17 +47,16 @@ public class ProductCatalogService {
     }
 
     @Caching(
-        cacheable = @Cacheable(value = "catalogs", key = "#catalogId"),
-        put = @CachePut(value = "catalogs", key = "#catalogId", condition = "#result != null")
-    )
+            cacheable = @Cacheable(value = "catalogs", key = "#catalogId"),
+            put = @CachePut(value = "catalogs", key = "#catalogId", condition = "#result != null"))
     public ProductCatalog addProductToCatalog(String catalogId, Product product) {
-        log.info("Adding product {} to catalog {}", product.getId().getValue(), catalogId);
-        
+        log.info("Adding product {} to catalog {}", product.getId().value(), catalogId);
+
         Optional<ProductCatalog> catalogOpt = catalogRepository.findById(catalogId);
         if (catalogOpt.isEmpty()) {
             throw new IllegalArgumentException("Catalog not found: " + catalogId);
         }
-        
+
         ProductCatalog catalog = catalogOpt.get();
         catalog.addProduct(product);
         return catalogRepository.save(catalog);
@@ -63,13 +64,13 @@ public class ProductCatalogService {
 
     @CacheEvict(value = "catalogs", key = "#catalogId")
     public void removeProductFromCatalog(String catalogId, ProductId productId) {
-        log.info("Removing product {} from catalog {}", productId.getValue(), catalogId);
-        
+        log.info("Removing product {} from catalog {}", productId.value(), catalogId);
+
         Optional<ProductCatalog> catalogOpt = catalogRepository.findById(catalogId);
         if (catalogOpt.isEmpty()) {
             throw new IllegalArgumentException("Catalog not found: " + catalogId);
         }
-        
+
         ProductCatalog catalog = catalogOpt.get();
         catalog.removeProduct(productId);
         catalogRepository.save(catalog);
