@@ -3,3 +3,67 @@ services:
     image: 'redis:latest'
     ports:
       - '6379:6379'
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis_data:/data
+
+  # Main application instance
+  app:
+    build: .
+    ports:
+      - '8080:8080'
+    depends_on:
+      - redis
+    environment:
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - INSTANCE_NAME=app-main
+      - SERVER_PORT=8080
+    profiles:
+      - multi-instance
+
+  # Additional instances for testing cache synchronization
+  app-instance-2:
+    build: .
+    ports:
+      - '8081:8080'
+    depends_on:
+      - redis
+    environment:
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - INSTANCE_NAME=app-instance-2
+      - SERVER_PORT=8080
+    profiles:
+      - multi-instance
+
+  app-instance-3:
+    build: .
+    ports:
+      - '8082:8080'
+    depends_on:
+      - redis
+    environment:
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - INSTANCE_NAME=app-instance-3
+      - SERVER_PORT=8080
+    profiles:
+      - multi-instance
+
+  app-instance-4:
+    build: .
+    ports:
+      - '8083:8080'
+    depends_on:
+      - redis
+    environment:
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - INSTANCE_NAME=app-instance-4
+      - SERVER_PORT=8080
+    profiles:
+      - multi-instance
+
+volumes:
+  redis_data:

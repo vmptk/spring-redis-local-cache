@@ -63,29 +63,35 @@ class NearCacheIntegrationTest {
     }
 
     @Test
-    @org.junit.jupiter.api.Disabled("Flaky test due to timing - cache hit count can vary by 1")
     void testNearCacheHitOnSecondAccess() {
-        // Save product
-        productService.createProduct(testProduct);
-
-        // Get Caffeine cache stats before
+        // Get Caffeine cache stats before any operations
         CacheStats statsBefore = getCaffeineStats("products");
         long missCountBefore = statsBefore.missCount();
         long hitCountBefore = statsBefore.hitCount();
 
-        // First access - should be a cache miss
+        // Save product (may or may not cache)
+        productService.createProduct(testProduct);
+
+        // Clear cache to ensure controlled test conditions
+        cacheManager.getCache("products").clear();
+        
+        // Get stats after clearing cache
+        CacheStats statsAfterClear = getCaffeineStats("products");
+        long missCountAfterClear = statsAfterClear.missCount();
+        long hitCountAfterClear = statsAfterClear.hitCount();
+
+        // First access - should be a cache miss (loading from Redis or DB)
         productService.findProductById(productId);
         
         CacheStats statsAfterFirst = getCaffeineStats("products");
-        assertThat(statsAfterFirst.missCount()).isEqualTo(missCountBefore + 1);
-        assertThat(statsAfterFirst.hitCount()).isEqualTo(hitCountBefore);
+        assertThat(statsAfterFirst.missCount()).isGreaterThan(missCountAfterClear);
 
         // Second access - should be a cache hit
         productService.findProductById(productId);
         
         CacheStats statsAfterSecond = getCaffeineStats("products");
-        assertThat(statsAfterSecond.missCount()).isEqualTo(missCountBefore + 1);
-        assertThat(statsAfterSecond.hitCount()).isGreaterThan(hitCountBefore);
+        assertThat(statsAfterSecond.hitCount()).isGreaterThan(hitCountAfterClear);
+        assertThat(statsAfterSecond.missCount()).isEqualTo(statsAfterFirst.missCount());
     }
 
     @Test

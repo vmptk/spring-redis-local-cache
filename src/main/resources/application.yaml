@@ -1,8 +1,10 @@
 spring:
   application:
-    name: demo
+    name: ${INSTANCE_NAME:demo}
   
   redis:
+    host: ${SPRING_DATA_REDIS_HOST:localhost}
+    port: ${SPRING_DATA_REDIS_PORT:6379}
     timeout: 2000ms
     lettuce:
       pool:
@@ -14,9 +16,20 @@ spring:
   cache:
     type: caffeine
     caffeine:
-      spec: maximumSize=1000,expireAfterWrite=5m,recordStats
+      spec: maximumSize=500,expireAfterWrite=2m,expireAfterAccess=1m,recordStats
+
+server:
+  port: ${SERVER_PORT:8080}
+
+# Instance identification for logging
+app:
+  instance:
+    name: ${INSTANCE_NAME:demo}
 
 logging:
   level:
-    com.example.demo: DEBUG
+    com.example.demo: INFO
     org.springframework.cache: DEBUG
+    org.springframework.data.redis: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [${app.instance.name:demo}] [%thread] %-5level %logger{36} - %msg%n"

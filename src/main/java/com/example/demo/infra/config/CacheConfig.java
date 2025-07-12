@@ -34,8 +34,9 @@ public class CacheConfig {
     @Bean
     public Caffeine<Object, Object> caffeineCacheBuilder() {
         return Caffeine.newBuilder()
-                .expireAfterWrite(5, TimeUnit.MINUTES)
-                .maximumSize(1000)
+                .expireAfterWrite(2, TimeUnit.MINUTES)  // Shorter TTL for simulation
+                .expireAfterAccess(1, TimeUnit.MINUTES)  // Evict if not accessed
+                .maximumSize(500)  // Smaller cache for testing eviction
                 .recordStats();
     }
 
@@ -43,7 +44,7 @@ public class CacheConfig {
     public RedisCacheManager redisCacheManager(RedisConnectionFactory connectionFactory,
                                               ObjectMapper redisObjectMapper) {
         var config = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofMinutes(10))
+                .entryTtl(Duration.ofMinutes(5))  // Shorter TTL for simulation
                 .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer(redisObjectMapper)))
                 .disableCachingNullValues();

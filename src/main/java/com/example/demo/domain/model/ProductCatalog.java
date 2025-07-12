@@ -1,6 +1,8 @@
 package com.example.demo.domain.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -8,24 +10,42 @@ import lombok.NoArgsConstructor;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class ProductCatalog implements Serializable {
     private String catalogId;
     private String name;
+    
+    @JsonIgnore
     private Map<ProductId, Product> products;
+    
+    // For JSON serialization - store products as a list
+    @JsonProperty("productList")
+    private List<Product> productList;
+    
     private LocalDateTime lastUpdated;
 
     @JsonCreator
     public ProductCatalog(@JsonProperty("catalogId") String catalogId,
                          @JsonProperty("name") String name,
-                         @JsonProperty("products") Map<ProductId, Product> products,
+                         @JsonProperty("productList") List<Product> productList,
                          @JsonProperty("lastUpdated") LocalDateTime lastUpdated) {
         this.catalogId = catalogId;
         this.name = name;
-        this.products = products != null ? products : new HashMap<>();
         this.lastUpdated = lastUpdated;
+        
+        // Initialize products map from the list
+        this.products = new HashMap<>();
+        this.productList = productList != null ? productList : new ArrayList<>();
+        
+        if (productList != null) {
+            for (Product product : productList) {
+                this.products.put(product.getId(), product);
+            }
+        }
     }
 
     public static ProductCatalog create(String catalogId, String name) {
@@ -38,7 +58,7 @@ public class ProductCatalog implements Serializable {
         return new ProductCatalog(
                 catalogId,
                 name,
-                new HashMap<>(),
+                new ArrayList<>(),
                 LocalDateTime.now()
         );
     }
@@ -48,6 +68,7 @@ public class ProductCatalog implements Serializable {
             throw new IllegalArgumentException("Product cannot be null");
         }
         products.put(product.getId(), product);
+        syncProductList();
         lastUpdated = LocalDateTime.now();
     }
 
@@ -56,7 +77,13 @@ public class ProductCatalog implements Serializable {
             throw new IllegalArgumentException("Product ID cannot be null");
         }
         products.remove(productId);
+        syncProductList();
         lastUpdated = LocalDateTime.now();
+    }
+    
+    // Helper method to keep productList in sync with products map
+    private void syncProductList() {
+        this.productList = new ArrayList<>(products.values());
     }
 
     public Optional<Product> findProduct(ProductId productId) {
@@ -69,6 +96,7 @@ public class ProductCatalog implements Serializable {
                 .toList();
     }
 
+    @JsonIgnore
     public List<Product> getActiveProducts() {
         return products.values().stream()
                 .filter(Product::isActive)
@@ -79,6 +107,7 @@ public class ProductCatalog implements Serializable {
         return products.size();
     }
 
+    @JsonIgnore
     public int getActiveProductCount() {
         return (int) products.values().stream()
                 .filter(Product::isActive)

@@ -60,7 +60,6 @@ class ProductCatalogCacheTest {
     }
 
     @Test
-    @org.junit.jupiter.api.Disabled("ProductCatalog serialization needs complex Map handling - skipping for now")
     void testAddProductToCatalogUpdatesCache() {
         // Create catalog
         catalogService.createCatalog(testCatalog);
@@ -84,7 +83,6 @@ class ProductCatalogCacheTest {
     }
 
     @Test
-    @org.junit.jupiter.api.Disabled("ProductCatalog serialization needs complex Map handling - skipping for now")
     void testRemoveProductFromCatalogEvictsCache() {
         // Create catalog with product
         catalogService.createCatalog(testCatalog);
