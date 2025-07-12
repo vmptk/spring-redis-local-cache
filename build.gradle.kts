@@ -3,7 +3,7 @@ plugins {
     id("org.springframework.boot") version "3.5.3"
     id("io.spring.dependency-management") version "1.1.7"
     id("pmd")
-    id("com.github.spotbugs") version "6.0.25"
+    id("com.github.spotbugs") version "6.2.2"
     id("org.sonarqube") version "5.1.0.4882"
     id("jacoco")
     id("com.diffplug.spotless") version "7.1.0"
