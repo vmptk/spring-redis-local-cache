@@ -58,7 +58,7 @@ public class CacheAccessTracker {
     private boolean checkRedisKey(String cacheName, Object key) {
         try {
             var redisKey = cacheName + "::" + key;
-            return Boolean.TRUE.equals(redisTemplate.hasKey(redisKey));
+            return redisTemplate.hasKey(redisKey);
         } catch (Exception e) {
             log.debug("Error checking Redis for key existence: {}", e.getMessage());
             return false;

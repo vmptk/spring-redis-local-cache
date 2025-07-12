@@ -1,9 +1,8 @@
 package com.example.demo.infra.repository;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
@@ -36,15 +35,12 @@ public class RedisProductCatalogRepository implements ProductCatalogRepository {
 
     @Override
     public List<ProductCatalog> findAll() {
-        Set<String> keys = redisTemplate.keys(KEY_PREFIX + "*");
-        if (keys == null) {
-            return List.of();
-        }
+        var keys = redisTemplate.keys(KEY_PREFIX + "*");
 
         return keys.stream()
                 .map(key -> (ProductCatalog) redisTemplate.opsForValue().get(key))
-                .filter(catalog -> catalog != null)
-                .collect(Collectors.toList());
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     @Override
@@ -56,6 +52,6 @@ public class RedisProductCatalogRepository implements ProductCatalogRepository {
     @Override
     public boolean existsById(String catalogId) {
         String key = KEY_PREFIX + catalogId;
-        return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+        return redisTemplate.hasKey(key);
     }
 }
