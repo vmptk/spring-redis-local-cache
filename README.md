@@ -1,9 +1,15 @@
 # Spring Redis Near Cache (Local Cache) Sample
 
+[![CI Pipeline](https://github.com/username/spring-redis-local-cache/actions/workflows/ci.yml/badge.svg)](https://github.com/username/spring-redis-local-cache/actions/workflows/ci.yml)
+[![Test Results](https://img.shields.io/badge/Test%20Results-View%20Report-blue)](https://username.github.io/spring-redis-local-cache/reports/tests/)
+[![Code Quality](https://img.shields.io/badge/Code%20Quality-PMD%20Report-orange)](https://username.github.io/spring-redis-local-cache/reports/pmd/)
+[![Security Scan](https://img.shields.io/badge/Security-Trivy%20Scan-green)](https://github.com/username/spring-redis-local-cache/security/code-scanning)
+
 A comprehensive implementation of Redis near cache pattern using Spring Boot, Domain Driven Design (DDD), and a Product Catalog domain model. This sample demonstrates L1 (Caffeine local cache) + L2 (Redis distributed cache) architecture with **automated data simulation**, **multi-instance testing**, and **detailed cache statistics tracking** for optimal performance analysis.
 
 ## Table of Contents
 
+- [CI/CD & Quality Reports](#cicd--quality-reports)
 - [Architecture Overview](#architecture-overview)
 - [Near Cache Pattern](#near-cache-pattern)
 - [🚀 Multi-Instance Cache Synchronization](#-multi-instance-cache-synchronization)
@@ -18,6 +24,49 @@ A comprehensive implementation of Redis near cache pattern using Spring Boot, Do
 - [Performance Characteristics](#performance-characteristics)
 - [Use Cases](#use-cases)
 - [Best Practices](#best-practices)
+
+## CI/CD & Quality Reports
+
+### Continuous Integration
+
+This project includes a comprehensive CI/CD pipeline with automated testing, code quality analysis, and security scanning:
+
+#### Pipeline Status & Reports
+- **🔄 [CI Pipeline Status](https://github.com/username/spring-redis-local-cache/actions/workflows/ci.yml)** - View build and test execution status
+- **📋 [Test Results Report](https://username.github.io/spring-redis-local-cache/reports/tests/)** - Detailed JUnit test reports with coverage
+- **🔍 [PMD Code Quality Report](https://username.github.io/spring-redis-local-cache/reports/pmd/)** - Static code analysis and quality metrics
+- **🛡️ [Security Scan Results](https://github.com/username/spring-redis-local-cache/security/code-scanning)** - Trivy vulnerability assessments
+
+#### Pipeline Features
+- **Multi-Java Testing**: Automated testing with Java 24 on Ubuntu
+- **Code Quality Gates**: PMD static analysis, Spotless formatting checks
+- **Security Scanning**: Trivy vulnerability scanning for dependencies and container images
+- **Multi-Instance Testing**: Automated testing of cache synchronization across 4 application instances
+- **Performance Testing**: Automated performance benchmarks on main branch
+- **Artifact Publishing**: Test reports and build artifacts published to GitHub Pages
+
+#### Quality Metrics
+- **Test Coverage**: Comprehensive unit and integration test coverage
+- **Code Quality**: PMD violations reduced from 24 to 4 acceptable warnings
+- **Security**: Regular dependency vulnerability scanning
+- **Formatting**: Consistent code style with Palantir Java formatter
+
+#### How to Use Reports
+```bash
+# View latest test results
+open https://username.github.io/spring-redis-local-cache/reports/tests/
+
+# View PMD quality analysis
+open https://username.github.io/spring-redis-local-cache/reports/pmd/
+
+# Check security scan results
+open https://github.com/username/spring-redis-local-cache/security/code-scanning
+
+# Monitor CI pipeline
+open https://github.com/username/spring-redis-local-cache/actions
+```
+
+The CI pipeline automatically runs on every push to `main` and `develop` branches, as well as on all pull requests. Reports are updated automatically and provide detailed insights into code quality, test coverage, and security posture.
 
 ## Architecture Overview
 
@@ -326,6 +375,7 @@ The `monitor-instances.sh` script provides several monitoring options:
 
 ### Testing
 
+#### Local Testing
 ```bash
 # Run all tests
 ./gradlew test
@@ -336,6 +386,25 @@ The `monitor-instances.sh` script provides several monitoring options:
 # View test reports
 open build/reports/tests/test/index.html
 ```
+
+#### Automated CI Testing
+The project includes comprehensive automated testing via GitHub Actions:
+
+- **📋 [Latest Test Results](https://username.github.io/spring-redis-local-cache/reports/tests/)** - View detailed test reports
+- **🔄 [CI Pipeline](https://github.com/username/spring-redis-local-cache/actions)** - Monitor test execution status
+
+**Automated Test Scenarios:**
+- Unit tests with Redis Testcontainers
+- Integration tests with multiple cache layers
+- Multi-instance cache synchronization testing
+- Performance benchmarks (main branch only)
+- Security vulnerability scanning
+
+**Test Matrix:**
+- Java 24 on Ubuntu latest
+- Redis 7 Alpine container
+- Multiple application instances (ports 8080-8083)
+- Concurrent cache access patterns
 
 ## Configuration
 
