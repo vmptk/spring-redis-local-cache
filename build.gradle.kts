@@ -6,7 +6,7 @@ plugins {
     id("com.github.spotbugs") version "6.2.2"
     id("org.sonarqube") version "6.2.0.5505"
     id("jacoco")
-    id("com.diffplug.spotless") version "7.1.0"
+    id("com.diffplug.spotless") version "8.0.0"
 }
 
 group = "com.example"
